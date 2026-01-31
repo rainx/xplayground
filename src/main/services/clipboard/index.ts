@@ -14,7 +14,6 @@ import { ClipboardStorage } from './storage';
 import type {
   ClipboardItem,
   ClipboardContentType,
-  NativeClipboardItem,
   SearchFilter,
   ClipboardManagerSettings,
 } from './types';
@@ -22,12 +21,12 @@ import type {
 export class ClipboardService extends EventEmitter {
   private storage: ClipboardStorage;
   private pollInterval: NodeJS.Timeout | null = null;
-  private lastChangeCount = 0;
+  // private lastChangeCount = 0;
   private isMonitoring = false;
 
   // We'll use Electron's built-in clipboard for now
   // Native module will be used when Rust is compiled
-  private useNativeModule = false;
+  // private useNativeModule = false;
 
   constructor() {
     super();
@@ -43,7 +42,7 @@ export class ClipboardService extends EventEmitter {
     if (this.isMonitoring) return;
 
     this.isMonitoring = true;
-    this.lastChangeCount = 0;
+    // this.lastChangeCount = 0;
 
     // Poll every 500ms
     this.pollInterval = setInterval(() => {

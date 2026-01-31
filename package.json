@@ -57,6 +57,7 @@
     "appId": "com.rainx.xtoolbox",
     "productName": "xToolbox",
     "mac": {
+      "icon": "resources/icon.png",
       "category": "public.app-category.utilities",
       "target": [
         "dmg",

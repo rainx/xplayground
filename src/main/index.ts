@@ -63,6 +63,12 @@ app.whenReady().then(async () => {
     app.setAppUserModelId('com.rainx.xtoolbox');
   }
 
+  // Set dock icon for macOS in development
+  if (process.platform === 'darwin' && !app.isPackaged) {
+    const iconPath = join(__dirname, '../../resources/icon.png');
+    app.dock.setIcon(iconPath);
+  }
+
   const window = createWindow();
 
   // Initialize services after window is created

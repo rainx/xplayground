@@ -1,9 +1,10 @@
-import { app, shell, BrowserWindow, globalShortcut } from 'electron';
+import { app, shell, BrowserWindow, globalShortcut, screen } from 'electron';
 import { join } from 'path';
 import { getClipboardService } from './services/clipboard';
 import { registerClipboardHandlers, registerWindowHandlers } from './services/clipboard/handlers';
 
 let mainWindow: BrowserWindow | null = null;
+let popupWindow: BrowserWindow | null = null;
 
 function createWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
@@ -38,6 +39,150 @@ function createWindow(): BrowserWindow {
   return mainWindow;
 }
 
+function createPopupWindow(): BrowserWindow {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+
+  // Popup dimensions - nearly full screen width for more content
+  const popupWidth = screenWidth - 40;
+  const popupHeight = 280;
+
+  // Position at bottom center of screen
+  const x = Math.round((screenWidth - popupWidth) / 2);
+  const y = screenHeight - popupHeight;
+
+  popupWindow = new BrowserWindow({
+    width: popupWidth,
+    height: popupHeight,
+    x,
+    y,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: true,
+    vibrancy: 'under-window',
+    visualEffectState: 'active',
+    // Panel type on macOS - creates NSPanel instead of NSWindow
+    // This allows the window to appear without activating (stealing focus)
+    type: 'panel',
+    // Don't take focus from other apps
+    focusable: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+    },
+  });
+
+  // Since the window is non-focusable, blur event won't fire normally
+  // Instead, we'll hide the popup when:
+  // 1. User presses Escape (handled via global shortcut)
+  // 2. User clicks an item (handled in renderer)
+  // 3. User presses the toggle shortcut again (handled in registerGlobalShortcuts)
+
+  popupWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url);
+    return { action: 'deny' };
+  });
+
+  // Load popup renderer
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
+    popupWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/popup.html`);
+  } else {
+    popupWindow.loadFile(join(__dirname, '../renderer/popup.html'));
+  }
+
+  return popupWindow;
+}
+
+function showPopupWindow(): void {
+  if (!popupWindow || popupWindow.isDestroyed()) {
+    popupWindow = createPopupWindow();
+  }
+
+  // Reposition popup to current primary display
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  const popupWidth = screenWidth - 40;
+  const popupHeight = 280;
+  const x = Math.round((screenWidth - popupWidth) / 2);
+  const y = screenHeight - popupHeight;
+
+  popupWindow.setBounds({ x, y, width: popupWidth, height: popupHeight });
+  // Use showInactive() to display without stealing focus from other apps
+  popupWindow.showInactive();
+
+  // Register keyboard shortcuts for popup navigation (only while popup is visible)
+  registerPopupKeyboardShortcuts();
+}
+
+function hidePopupWindow(): void {
+  if (popupWindow && !popupWindow.isDestroyed()) {
+    popupWindow.hide();
+  }
+  // Unregister popup-specific shortcuts when hidden
+  unregisterPopupKeyboardShortcuts();
+}
+
+// Keyboard shortcuts registered only while popup is visible
+const popupShortcuts = ['Escape', 'Left', 'Right', 'Up', 'Down', 'Return', 'Enter'];
+
+function registerPopupKeyboardShortcuts(): void {
+  // Escape to close popup
+  globalShortcut.register('Escape', () => {
+    hidePopupWindow();
+  });
+
+  // Arrow keys for navigation
+  globalShortcut.register('Left', () => {
+    if (popupWindow && !popupWindow.isDestroyed()) {
+      popupWindow.webContents.send('popup:navigate', 'left');
+    }
+  });
+
+  globalShortcut.register('Right', () => {
+    if (popupWindow && !popupWindow.isDestroyed()) {
+      popupWindow.webContents.send('popup:navigate', 'right');
+    }
+  });
+
+  globalShortcut.register('Up', () => {
+    if (popupWindow && !popupWindow.isDestroyed()) {
+      popupWindow.webContents.send('popup:navigate', 'up');
+    }
+  });
+
+  globalShortcut.register('Down', () => {
+    if (popupWindow && !popupWindow.isDestroyed()) {
+      popupWindow.webContents.send('popup:navigate', 'down');
+    }
+  });
+
+  // Enter to select current item
+  globalShortcut.register('Return', () => {
+    if (popupWindow && !popupWindow.isDestroyed()) {
+      popupWindow.webContents.send('popup:select');
+    }
+  });
+}
+
+function unregisterPopupKeyboardShortcuts(): void {
+  for (const shortcut of popupShortcuts) {
+    globalShortcut.unregister(shortcut);
+  }
+}
+
+function togglePopupWindow(): void {
+  if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) {
+    hidePopupWindow();
+  } else {
+    showPopupWindow();
+  }
+}
+
 async function initializeServices(window: BrowserWindow): Promise<void> {
   try {
     // Initialize clipboard service
@@ -58,19 +203,12 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
 }
 
 function registerGlobalShortcuts(): void {
-  // Register global shortcut to show/focus clipboard window
+  // Register global shortcut to show/toggle clipboard popup
   // Default: Option+Command+V (macOS) or Alt+Ctrl+V (Windows/Linux)
   const shortcut = process.platform === 'darwin' ? 'Alt+Command+V' : 'Alt+Control+V';
 
   const registered = globalShortcut.register(shortcut, () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible() && mainWindow.isFocused()) {
-        mainWindow.hide();
-      } else {
-        mainWindow.show();
-        mainWindow.focus();
-      }
-    }
+    togglePopupWindow();
   });
 
   if (!registered) {
@@ -102,18 +240,22 @@ app.whenReady().then(async () => {
   // Initialize services after window is created
   await initializeServices(window);
 
+  // Create popup window (hidden initially)
+  createPopupWindow();
+
   // Register global shortcuts
   registerGlobalShortcuts();
 
-  // Register window-related IPC handlers
-  registerWindowHandlers(window);
+  // Register window-related IPC handlers for both windows
+  registerWindowHandlers(window, popupWindow);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const newWindow = createWindow();
       initializeServices(newWindow);
+      createPopupWindow();
       registerGlobalShortcuts();
-      registerWindowHandlers(newWindow);
+      registerWindowHandlers(newWindow, popupWindow);
     }
   });
 });

@@ -42,6 +42,24 @@ const api = {
     hide: () => ipcRenderer.invoke('window:hide'),
   },
 
+  // Popup keyboard navigation (for non-focusable popup window)
+  popup: {
+    onNavigate: (callback: (direction: 'left' | 'right' | 'up' | 'down') => void) => {
+      const handler = (_event: unknown, direction: 'left' | 'right' | 'up' | 'down') => callback(direction);
+      ipcRenderer.on('popup:navigate', handler);
+      return () => {
+        ipcRenderer.removeListener('popup:navigate', handler);
+      };
+    },
+    onSelect: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('popup:select', handler);
+      return () => {
+        ipcRenderer.removeListener('popup:select', handler);
+      };
+    },
+  },
+
   // Shell APIs (open URLs, files, etc.)
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),

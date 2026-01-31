@@ -109,6 +109,10 @@ declare global {
         show: () => Promise<{ success: boolean }>;
         hide: () => Promise<{ success: boolean }>;
       };
+      popup: {
+        onNavigate: (callback: (direction: 'left' | 'right' | 'up' | 'down') => void) => () => void;
+        onSelect: (callback: () => void) => () => void;
+      };
       shell: {
         openExternal: (url: string) => Promise<{ success: boolean }>;
         openPath: (path: string) => Promise<{ success: boolean }>;

@@ -1,0 +1,171 @@
+/* Popup-specific styles with slide-in animation */
+
+body {
+  background: transparent;
+  overflow: hidden;
+}
+
+.clipboard-popup {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.4);
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.clipboard-popup.visible {
+  transform: translateY(0);
+}
+
+/* Drag handle at top of popup */
+.popup-drag-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  margin: 8px auto;
+  cursor: grab;
+  -webkit-app-region: drag;
+}
+
+.popup-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Popup Header */
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px 12px;
+  gap: 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.popup-header-left {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.popup-header-right {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+/* Override category tabs for popup */
+.clipboard-popup .category-tabs {
+  padding: 0;
+  gap: 6px;
+}
+
+.clipboard-popup .category-tab {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+/* Popup Main Content */
+.popup-main {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+}
+
+.popup-main .clipboard-strip {
+  padding: 12px 16px;
+  height: 100%;
+}
+
+.popup-main .strip-content {
+  min-height: unset;
+  gap: 12px;
+}
+
+/* Smaller clipboard items in popup */
+.clipboard-popup .clipboard-item {
+  width: 180px;
+  min-height: 140px;
+  padding: 10px;
+}
+
+.clipboard-popup .item-header {
+  margin-bottom: 8px;
+  font-size: 10px;
+}
+
+.clipboard-popup .preview-text {
+  font-size: 12px;
+  -webkit-line-clamp: 4;
+}
+
+.clipboard-popup .item-actions {
+  margin-top: 8px;
+}
+
+.clipboard-popup .action-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+/* Popup Footer */
+.popup-footer {
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+}
+
+.popup-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.popup-hint kbd {
+  background: var(--bg-tertiary);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.popup-hint .separator {
+  opacity: 0.5;
+  margin: 0 4px;
+}
+
+/* Override search bar for popup */
+.clipboard-popup .search-input-wrapper {
+  padding: 0 10px;
+}
+
+.clipboard-popup .search-input {
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+/* Hide scrollbar but keep functionality */
+.clipboard-popup .clipboard-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.clipboard-popup .clipboard-strip::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+/* Ensure context menu appears above everything */
+.clipboard-popup .context-menu {
+  z-index: 1001;
+}

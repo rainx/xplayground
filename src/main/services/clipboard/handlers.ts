@@ -9,6 +9,7 @@ import { CategoryStorage } from './category-storage';
 import type { SearchFilter, ClipboardManagerSettings, CategoryCreateInput, CategoryUpdateInput } from './types';
 
 let categoryStorage: CategoryStorage | null = null;
+let popupWindowRef: BrowserWindow | null = null;
 
 async function getCategoryStorage(): Promise<CategoryStorage> {
   if (!categoryStorage) {
@@ -22,16 +23,22 @@ export function registerClipboardHandlers(
   service: ClipboardService,
   mainWindow: BrowserWindow
 ): void {
-  // Forward clipboard changes to renderer
+  // Forward clipboard changes to all renderers (main window and popup)
   service.on('clipboard-change', (item) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('clipboard:item-added', item);
+    }
+    if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+      popupWindowRef.webContents.send('clipboard:item-added', item);
     }
   });
 
   service.on('item-deleted', (id) => {
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('clipboard:item-deleted', id);
+    }
+    if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+      popupWindowRef.webContents.send('clipboard:item-deleted', id);
     }
   });
 
@@ -55,8 +62,11 @@ export function registerClipboardHandlers(
     const shouldHide = options?.hideWindow ?? true;
     const shouldSimulatePaste = options?.simulatePaste ?? true;
 
-    if (shouldHide && !mainWindow.isDestroyed()) {
-      mainWindow.hide();
+    if (shouldHide) {
+      // Hide popup window if it's visible
+      if (popupWindowRef && !popupWindowRef.isDestroyed() && popupWindowRef.isVisible()) {
+        popupWindowRef.hide();
+      }
     }
 
     if (shouldSimulatePaste) {
@@ -117,14 +127,22 @@ export function registerClipboardHandlers(
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.send('clipboard:category-created', category);
     }
+    if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+      popupWindowRef.webContents.send('clipboard:category-created', category);
+    }
     return category;
   });
 
   ipcMain.handle('clipboard:update-category', async (_event, id: string, updates: CategoryUpdateInput) => {
     const storage = await getCategoryStorage();
     const category = await storage.updateCategory(id, updates);
-    if (category && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('clipboard:category-updated', category);
+    if (category) {
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('clipboard:category-updated', category);
+      }
+      if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+        popupWindowRef.webContents.send('clipboard:category-updated', category);
+      }
     }
     return category;
   });
@@ -137,6 +155,9 @@ export function registerClipboardHandlers(
       await service.removeAllItemsFromCategory(id);
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('clipboard:category-deleted', id);
+      }
+      if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+        popupWindowRef.webContents.send('clipboard:category-deleted', id);
       }
     }
     return { success: deleted };
@@ -151,13 +172,16 @@ export function registerClipboardHandlers(
   // Item-Category association
   ipcMain.handle('clipboard:assign-category', async (_event, itemId: string, categoryId: string) => {
     const success = await service.assignCategory(itemId, categoryId);
-    if (success && !mainWindow.isDestroyed()) {
+    if (success) {
       const item = await service.getItem(itemId);
       if (item) {
-        mainWindow.webContents.send('clipboard:item-category-changed', {
-          itemId,
-          categoryIds: item.pinboardIds || [],
-        });
+        const eventData = { itemId, categoryIds: item.pinboardIds || [] };
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('clipboard:item-category-changed', eventData);
+        }
+        if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+          popupWindowRef.webContents.send('clipboard:item-category-changed', eventData);
+        }
       }
     }
     return { success };
@@ -165,13 +189,16 @@ export function registerClipboardHandlers(
 
   ipcMain.handle('clipboard:remove-category', async (_event, itemId: string, categoryId: string) => {
     const success = await service.removeCategory(itemId, categoryId);
-    if (success && !mainWindow.isDestroyed()) {
+    if (success) {
       const item = await service.getItem(itemId);
       if (item) {
-        mainWindow.webContents.send('clipboard:item-category-changed', {
-          itemId,
-          categoryIds: item.pinboardIds || [],
-        });
+        const eventData = { itemId, categoryIds: item.pinboardIds || [] };
+        if (!mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('clipboard:item-category-changed', eventData);
+        }
+        if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+          popupWindowRef.webContents.send('clipboard:item-category-changed', eventData);
+        }
       }
     }
     return { success };
@@ -179,11 +206,14 @@ export function registerClipboardHandlers(
 
   ipcMain.handle('clipboard:clear-item-categories', async (_event, itemId: string) => {
     const success = await service.clearItemCategories(itemId);
-    if (success && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('clipboard:item-category-changed', {
-        itemId,
-        categoryIds: [],
-      });
+    if (success) {
+      const eventData = { itemId, categoryIds: [] };
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('clipboard:item-category-changed', eventData);
+      }
+      if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+        popupWindowRef.webContents.send('clipboard:item-category-changed', eventData);
+      }
     }
     return { success };
   });
@@ -195,14 +225,22 @@ export function registerClipboardHandlers(
   // Duplicate item
   ipcMain.handle('clipboard:duplicate-item', async (_event, itemId: string) => {
     const newItem = await service.duplicateItem(itemId);
-    if (newItem && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('clipboard:item-added', newItem);
+    if (newItem) {
+      if (!mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('clipboard:item-added', newItem);
+      }
+      if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+        popupWindowRef.webContents.send('clipboard:item-added', newItem);
+      }
     }
     return newItem;
   });
 }
 
-export function registerWindowHandlers(mainWindow: BrowserWindow): void {
+export function registerWindowHandlers(mainWindow: BrowserWindow, popupWindow?: BrowserWindow | null): void {
+  // Store popup window reference for use in paste handler
+  popupWindowRef = popupWindow || null;
+
   // Show/hide window
   ipcMain.handle('window:show', async () => {
     if (!mainWindow.isDestroyed()) {
@@ -213,8 +251,9 @@ export function registerWindowHandlers(mainWindow: BrowserWindow): void {
   });
 
   ipcMain.handle('window:hide', async () => {
-    if (!mainWindow.isDestroyed()) {
-      mainWindow.hide();
+    // Hide popup window if it exists and is visible
+    if (popupWindow && !popupWindow.isDestroyed() && popupWindow.isVisible()) {
+      popupWindow.hide();
     }
     return { success: true };
   });

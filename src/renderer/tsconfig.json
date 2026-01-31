@@ -1,6 +1,9 @@
 {
-  "extends": "@electron-toolkit/eslint-config-ts/tsconfig/renderer.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "composite": true,
     "outDir": "../../out/renderer",
     "baseUrl": ".",
@@ -9,6 +12,9 @@
     },
     "jsx": "react-jsx",
     "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },

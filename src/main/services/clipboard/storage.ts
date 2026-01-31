@@ -8,24 +8,14 @@ import * as path from 'path';
 import type { ClipboardItem, ClipboardManagerSettings, SearchFilter } from './types';
 
 export class ClipboardStorage {
-  private basePath: string;
-  private dataPath: string;
-  private assetsPath: string;
+  private basePath: string = '';
+  private dataPath: string = '';
+  private assetsPath: string = '';
   private indexCache: ClipboardItem[] = [];
   private settings: ClipboardManagerSettings;
+  private initialized: boolean = false;
 
   constructor() {
-    // Use iCloud Drive path for automatic sync
-    // ~/Library/Mobile Documents/com~rainx~xtoolbox/Documents/clipboard
-    const iCloudContainer = path.join(
-      app.getPath('home'),
-      'Library/Mobile Documents/com~rainx~xtoolbox/Documents'
-    );
-
-    this.basePath = path.join(iCloudContainer, 'clipboard');
-    this.dataPath = path.join(this.basePath, 'data');
-    this.assetsPath = path.join(this.basePath, 'assets');
-
     this.settings = {
       maxHistoryItems: 1000,
       retentionDays: 30,
@@ -33,7 +23,26 @@ export class ClipboardStorage {
     };
   }
 
+  private initPaths(): void {
+    if (this.initialized) return;
+
+    // Use app's userData directory as fallback (works without special permissions)
+    // For iCloud sync, we'll try iCloud Drive path first, but fallback to local storage
+    const userDataPath = app.getPath('userData');
+
+    // TODO: Once app is properly signed and has iCloud entitlements,
+    // we can use: ~/Library/Mobile Documents/com~rainx~xtoolbox/Documents/clipboard
+    // For now, use local storage
+    this.basePath = path.join(userDataPath, 'clipboard');
+    this.dataPath = path.join(this.basePath, 'data');
+    this.assetsPath = path.join(this.basePath, 'assets');
+    this.initialized = true;
+  }
+
   async initialize(): Promise<void> {
+    // Initialize paths (must be called after app is ready)
+    this.initPaths();
+
     // Create directory structure
     await fs.mkdir(this.dataPath, { recursive: true });
     await fs.mkdir(path.join(this.dataPath, 'items'), { recursive: true });

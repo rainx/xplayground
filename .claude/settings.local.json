@@ -5,7 +5,21 @@
       "WebFetch(domain:www.macstories.net)",
       "WebFetch(domain:apps.apple.com)",
       "Bash(tree:*)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(pnpm approve-builds:*)",
+      "Bash(pnpm build)",
+      "Bash(proto use)",
+      "Bash(~/.proto/shims/cargo --version)",
+      "Bash(source:*)",
+      "Bash(cargo build:*)",
+      "Bash(ls:*)",
+      "Bash(pnpm dev)",
+      "Bash(./node_modules/.bin/electron:*)",
+      "Bash(./node_modules/electron/dist/Electron.app/Contents/MacOS/Electron:*)",
+      "WebFetch(domain:electron-vite.org)",
+      "WebFetch(domain:github.com)",
+      "Bash(echo:*)",
+      "Bash(unset:*)"
     ]
   }
 }

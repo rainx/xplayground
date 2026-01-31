@@ -164,11 +164,11 @@ fn read_string_for_type(pasteboard: id, type_str: &str) -> Option<String> {
 #[cfg(target_os = "macos")]
 fn read_file_urls(pasteboard: id) -> Option<Vec<String>> {
     unsafe {
-        let file_url_type = NSString::alloc(nil).init_str("public.file-url");
-        let urls: id = msg_send![pasteboard, readObjectsForClasses:
-            NSArray::arrayWithObject(nil, class!(NSURL))
-            options: nil
-        ];
+        // Create an NSArray containing the NSURL class
+        let nsurl_class: id = class!(NSURL) as *const _ as id;
+        let classes: id = msg_send![class!(NSArray), arrayWithObject: nsurl_class];
+
+        let urls: id = msg_send![pasteboard, readObjectsForClasses: classes options: nil];
 
         if urls == nil {
             return None;

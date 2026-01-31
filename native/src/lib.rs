@@ -5,9 +5,8 @@ use napi_derive::napi;
 // Clipboard monitoring module
 pub mod clipboard;
 
-// Re-export clipboard types for napi
-pub use clipboard::monitor::{get_clipboard_change_count, read_clipboard_content};
-pub use clipboard::types::*;
+use clipboard::monitor::{get_clipboard_change_count, read_clipboard_content};
+use clipboard::types::NativeClipboardItem;
 
 /// Read the current clipboard and return as a native item
 #[napi]

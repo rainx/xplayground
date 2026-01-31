@@ -1,9 +1,15 @@
 {
-  "extends": "@electron-toolkit/eslint-config-ts/tsconfig/preload.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM"],
     "composite": true,
     "outDir": "../../out/preload",
-    "strict": true
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
   },
   "include": ["./**/*.ts"]
 }

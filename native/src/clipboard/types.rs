@@ -2,10 +2,11 @@
 
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Content type of a clipboard item
 #[napi(string_enum)]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum ClipboardContentType {
     Text,
     RichText,
@@ -14,6 +15,20 @@ pub enum ClipboardContentType {
     Link,
     Color,
     Unknown,
+}
+
+impl fmt::Display for ClipboardContentType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ClipboardContentType::Text => write!(f, "text"),
+            ClipboardContentType::RichText => write!(f, "rich_text"),
+            ClipboardContentType::Image => write!(f, "image"),
+            ClipboardContentType::File => write!(f, "file"),
+            ClipboardContentType::Link => write!(f, "link"),
+            ClipboardContentType::Color => write!(f, "color"),
+            ClipboardContentType::Unknown => write!(f, "unknown"),
+        }
+    }
 }
 
 /// Information about the source application

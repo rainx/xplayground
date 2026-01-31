@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 
 // E2E tests for xToolbox
 // These tests require the app to be built and running

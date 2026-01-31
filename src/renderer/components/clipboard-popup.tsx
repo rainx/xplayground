@@ -111,9 +111,9 @@ export function ClipboardPopup(): JSX.Element {
     await window.api.clipboard.pasteItem(itemId, { hideWindow: false, simulatePaste: false });
   }, []);
 
-  // Pin/Unpin item (toggle)
-  const handlePinItem = useCallback(async (_itemId: string) => {
-    console.log('Pin functionality not yet implemented');
+  // Pin/Unpin item (toggle) - TODO: implement when backend supports it
+  const handlePinItem = useCallback(async () => {
+    // Pin functionality not yet implemented
   }, []);
 
   // Preview item

@@ -2,7 +2,7 @@
  * SearchBar - Search input for clipboard history
  */
 
-import type { SearchFilter } from '../types';
+
 
 interface SearchBarProps {
   value: string;

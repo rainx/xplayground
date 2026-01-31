@@ -19,7 +19,9 @@
       "WebFetch(domain:electron-vite.org)",
       "WebFetch(domain:github.com)",
       "Bash(echo:*)",
-      "Bash(unset:*)"
+      "Bash(unset:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

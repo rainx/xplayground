@@ -1,4 +1,5 @@
 import { ToolMetadata } from '@/shared/types';
+import logo from '../assets/logo.svg';
 
 interface SidebarProps {
   tools: ToolMetadata[];
@@ -14,7 +15,8 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <h2>Tools</h2>
+        <img src={logo} alt="xToolbox Logo" className="sidebar-logo" />
+        <span className="sidebar-title">xToolbox</span>
       </div>
       <nav className="tool-list">
         {tools.length === 0 ? (

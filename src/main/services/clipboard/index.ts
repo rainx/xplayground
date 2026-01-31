@@ -87,7 +87,9 @@ export class ClipboardService extends EventEmitter {
 
     switch (a.type) {
       case 'text':
+      case 'rich_text':
       case 'link':
+      case 'color':
         return a.textContent?.plainText === b.textContent?.plainText;
       case 'image':
         // Compare by size for now
@@ -101,7 +103,8 @@ export class ClipboardService extends EventEmitter {
           JSON.stringify(b.fileContent?.files.map((f) => f.path))
         );
       default:
-        return false;
+        // Unknown type - compare by searchableText as fallback
+        return a.searchableText === b.searchableText;
     }
   }
 

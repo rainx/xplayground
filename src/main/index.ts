@@ -122,9 +122,27 @@ function showPopupWindow(): void {
 function hidePopupWindow(): void {
   if (popupWindow && !popupWindow.isDestroyed()) {
     popupWindow.hide();
+    // Restore non-focusable state when hidden
+    popupWindow.setFocusable(false);
   }
   // Unregister popup-specific shortcuts when hidden
   unregisterPopupKeyboardShortcuts();
+}
+
+// Enable/disable focus for text input (e.g., editing category name)
+export function setPopupFocusable(focusable: boolean): void {
+  if (popupWindow && !popupWindow.isDestroyed()) {
+    popupWindow.setFocusable(focusable);
+    if (focusable) {
+      // When enabling focus, also focus the window and unregister navigation shortcuts
+      // to prevent them from interfering with text input
+      popupWindow.focus();
+      unregisterPopupKeyboardShortcuts();
+    } else {
+      // When disabling focus, re-register navigation shortcuts
+      registerPopupKeyboardShortcuts();
+    }
+  }
 }
 
 // Keyboard shortcuts registered only while popup is visible

@@ -58,6 +58,9 @@ const api = {
         ipcRenderer.removeListener('popup:select', handler);
       };
     },
+    // Enable/disable focus for text input (e.g., category editing)
+    setFocusable: (focusable: boolean) =>
+      ipcRenderer.invoke('popup:set-focusable', focusable),
   },
 
   // Shell APIs (open URLs, files, etc.)

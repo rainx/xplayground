@@ -112,6 +112,7 @@ declare global {
       popup: {
         onNavigate: (callback: (direction: 'left' | 'right' | 'up' | 'down') => void) => () => void;
         onSelect: (callback: () => void) => () => void;
+        setFocusable: (focusable: boolean) => Promise<{ success: boolean }>;
       };
       shell: {
         openExternal: (url: string) => Promise<{ success: boolean }>;

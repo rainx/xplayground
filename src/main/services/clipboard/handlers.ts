@@ -275,6 +275,17 @@ export function registerWindowHandlers(mainWindow: BrowserWindow, popupWindow?: 
     shell.showItemInFolder(path);
     return { success: true };
   });
+
+  // Set popup window focusable state (for text input in dialogs)
+  ipcMain.handle('popup:set-focusable', async (_event, focusable: boolean) => {
+    if (popupWindow && !popupWindow.isDestroyed()) {
+      popupWindow.setFocusable(focusable);
+      if (focusable) {
+        popupWindow.focus();
+      }
+    }
+    return { success: true };
+  });
 }
 
 export function unregisterClipboardHandlers(): void {

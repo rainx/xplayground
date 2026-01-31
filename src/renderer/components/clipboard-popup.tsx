@@ -7,13 +7,14 @@ import { useState, useMemo, useCallback, useEffect, MouseEvent } from 'react';
 import { ClipboardStrip } from '../tools/clipboard-manager/components/clipboard-strip';
 import { SearchBar } from '../tools/clipboard-manager/components/search-bar';
 import { CategoryTabs } from '../tools/clipboard-manager/components/category-tabs';
+import { CategoryDialog } from '../tools/clipboard-manager/components/category-dialog';
 import { ContextMenu } from '../tools/clipboard-manager/components/context-menu';
 import { useClipboardHistory } from '../tools/clipboard-manager/hooks/use-clipboard-history';
 import { useSearch } from '../tools/clipboard-manager/hooks/use-search';
 import { useCategories } from '../tools/clipboard-manager/hooks/use-categories';
 import { useDragDrop } from '../tools/clipboard-manager/hooks/use-drag-drop';
 import { useKeyboardShortcuts } from '../tools/clipboard-manager/hooks/use-keyboard-shortcuts';
-import type { ClipboardItem } from '../tools/clipboard-manager/types';
+import type { ClipboardItem, CategoryCreateInput, CategoryUpdateInput } from '../tools/clipboard-manager/types';
 import '../tools/clipboard-manager/styles/clipboard-manager.css';
 
 export function ClipboardPopup(): JSX.Element {
@@ -25,6 +26,7 @@ export function ClipboardPopup(): JSX.Element {
     itemId: string;
   } | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
 
   // Trigger slide-in animation after mount
   useEffect(() => {
@@ -53,10 +55,35 @@ export function ClipboardPopup(): JSX.Element {
 
   const {
     categories,
+    createCategory,
     assignItemToCategory,
     removeItemFromCategory,
     clearItemCategories,
   } = useCategories();
+
+  // Handle opening/closing dialogs - need to enable focus for text input
+  const handleOpenCategoryDialog = useCallback(async () => {
+    await window.api.popup.setFocusable(true);
+    setIsCategoryDialogOpen(true);
+  }, []);
+
+  const handleCloseCategoryDialog = useCallback(async () => {
+    setIsCategoryDialogOpen(false);
+    await window.api.popup.setFocusable(false);
+  }, []);
+
+  const handleSaveCategory = useCallback(async (data: CategoryCreateInput | CategoryUpdateInput) => {
+    // For popup, we only create new categories (not edit)
+    if ('name' in data && data.name) {
+      await createCategory(data as CategoryCreateInput);
+    }
+    handleCloseCategoryDialog();
+  }, [createCategory, handleCloseCategoryDialog]);
+
+  // Handle search input focus - enable focusable for text input
+  const handleSearchFocusChange = useCallback(async (focused: boolean) => {
+    await window.api.popup.setFocusable(focused);
+  }, []);
 
   // Subscribe to item category changes
   useEffect(() => {
@@ -237,7 +264,7 @@ export function ClipboardPopup(): JSX.Element {
             categories={categories}
             selectedCategoryId={selectedCategoryId}
             onSelectCategory={setSelectedCategoryId}
-            onAddCategory={() => {}}
+            onAddCategory={handleOpenCategoryDialog}
             dropTargetId={dropTargetId}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -249,6 +276,7 @@ export function ClipboardPopup(): JSX.Element {
             value={searchFilter.query}
             onChange={handleSearchChange}
             isSearching={isSearching}
+            onFocusChange={handleSearchFocusChange}
           />
         </div>
       </header>
@@ -300,6 +328,12 @@ export function ClipboardPopup(): JSX.Element {
           onClose={closeContextMenu}
         />
       )}
+
+      <CategoryDialog
+        isOpen={isCategoryDialogOpen}
+        onSave={handleSaveCategory}
+        onClose={handleCloseCategoryDialog}
+      />
     </div>
   );
 }

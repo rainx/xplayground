@@ -2,15 +2,22 @@
  * SearchBar - Search input for clipboard history
  */
 
-
-
 interface SearchBarProps {
   value: string;
   onChange: (query: string) => void;
   isSearching: boolean;
+  onFocusChange?: (focused: boolean) => void;
 }
 
-export function SearchBar({ value, onChange, isSearching }: SearchBarProps): JSX.Element {
+export function SearchBar({ value, onChange, isSearching, onFocusChange }: SearchBarProps): JSX.Element {
+  const handleFocus = () => {
+    onFocusChange?.(true);
+  };
+
+  const handleBlur = () => {
+    onFocusChange?.(false);
+  };
+
   return (
     <div className="search-bar">
       <div className="search-input-wrapper">
@@ -23,6 +30,8 @@ export function SearchBar({ value, onChange, isSearching }: SearchBarProps): JSX
           placeholder="Search clipboard history..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
         />
         {value && (
           <button

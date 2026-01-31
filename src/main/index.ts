@@ -58,6 +58,11 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  // Set app name for development mode (otherwise shows "Electron")
+  if (!app.isPackaged) {
+    app.setName('xToolbox');
+  }
+
   // Set app user model ID for Windows
   if (process.platform === 'win32') {
     app.setAppUserModelId('com.rainx.xtoolbox');

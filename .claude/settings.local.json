@@ -21,7 +21,10 @@
       "Bash(echo:*)",
       "Bash(unset:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(sips -g all:*)",
+      "Bash(pnpm add:*)",
+      "Bash(node scripts/fix-icon-transparency.mjs:*)"
     ]
   }
 }

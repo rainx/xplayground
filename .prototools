@@ -1,0 +1,18 @@
+# Proto version management for xToolbox
+# Run `proto use` to install all tools
+# https://moonrepo.dev/docs/proto/tools
+
+# Node.js - latest LTS version
+node = "lts"
+
+# pnpm - latest stable version
+pnpm = "latest"
+
+# Rust - latest stable for native macOS clipboard monitoring
+rust = "stable"
+
+[plugins]
+# Built-in plugins for Node ecosystem
+node = "source:node"
+pnpm = "source:pnpm"
+rust = "source:rust"

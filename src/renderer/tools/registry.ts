@@ -1,7 +1,7 @@
 import { Tool, ToolMetadata } from '@/shared/types';
 
-// Import tools here as they are created
-// import * as ExampleTool from './example';
+// Import tools
+import * as ClipboardManagerTool from './clipboard-manager';
 
 class ToolRegistry {
   private tools: Map<string, Tool> = new Map();
@@ -21,8 +21,8 @@ class ToolRegistry {
 
 export const toolRegistry = new ToolRegistry();
 
-// Register tools here
-// toolRegistry.register({
-//   metadata: ExampleTool.metadata,
-//   Component: ExampleTool.Component,
-// });
+// Register tools
+toolRegistry.register({
+  metadata: ClipboardManagerTool.metadata,
+  Component: ClipboardManagerTool.Component,
+});

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:pasteapp.io)",
+      "WebFetch(domain:www.macstories.net)",
+      "WebFetch(domain:apps.apple.com)",
+      "Bash(tree:*)",
+      "Bash(cargo check:*)"
+    ]
+  }
+}

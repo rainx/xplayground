@@ -2,6 +2,25 @@
 
 use napi_derive::napi;
 
+// Clipboard monitoring module
+pub mod clipboard;
+
+// Re-export clipboard types for napi
+pub use clipboard::monitor::{get_clipboard_change_count, read_clipboard_content};
+pub use clipboard::types::*;
+
+/// Read the current clipboard and return as a native item
+#[napi]
+pub fn clipboard_read() -> Option<NativeClipboardItem> {
+    read_clipboard_content()
+}
+
+/// Get the current clipboard change count (for polling)
+#[napi]
+pub fn clipboard_change_count() -> i64 {
+    get_clipboard_change_count()
+}
+
 /// Example native function - returns a greeting
 #[napi]
 pub fn greet(name: String) -> String {

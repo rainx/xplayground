@@ -186,36 +186,38 @@ Before completing any task:
 
 ## Implemented Tools
 
-### Clipboard Manager (v0.1)
+### Clipboard Manager (v0.2)
 
-**Status**: ✅ 基础功能已实现，开发服务器可运行
+**Status**: ✅ 核心功能完成，支持快捷键呼出和粘贴
 
 **功能特性**:
-- 剪贴板历史记录 - 自动捕获文本、图片、链接
-- 内容类型检测 - text, rich_text, link, image, color
+- 剪贴板历史记录 - 自动捕获文本、图片、链接、文件
+- 分类管理 - 支持拖拽分配分类，分类过滤
+- 全局快捷键 - `Option+Command+V` 呼出弹窗
+- 非抢焦点弹窗 - 不会让原应用失去焦点（类似 Paste App）
+- 键盘导航 - 方向键选择，Enter 粘贴，Escape 关闭
+- 右键菜单 - 粘贴、复制、删除、分类管理等操作
 - 搜索过滤 - 按内容类型和关键词搜索
-- 本地持久化存储 - JSON 格式存储历史记录
-- UI 组件 - 横向条形展示、搜索栏、详情预览
 
 **架构**:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Renderer (React)                                           │
-│  └── clipboard-manager.tsx                                  │
+│  ├── clipboard-manager.tsx (主窗口完整界面)                  │
+│  └── clipboard-popup.tsx (快捷键弹窗，精简界面)              │
 │       ├── clipboard-strip.tsx (横向历史条)                   │
-│       ├── clipboard-item.tsx (单个项目卡片)                  │
-│       └── search-bar.tsx (搜索过滤)                         │
+│       ├── category-tabs.tsx (分类标签)                       │
+│       └── context-menu.tsx (右键菜单)                        │
 ├─────────────────────────────────────────────────────────────┤
 │  Main Process                                               │
 │  └── services/clipboard/                                    │
 │       ├── index.ts (ClipboardService - 监控与事件)          │
-│       ├── storage.ts (ClipboardStorage - 持久化)           │
-│       ├── handlers.ts (IPC handlers)                        │
-│       └── types.ts (TypeScript 类型定义)                    │
+│       ├── storage.ts (ClipboardStorage - 历史持久化)        │
+│       ├── category-storage.ts (CategoryStorage - 分类持久化)│
+│       └── handlers.ts (IPC handlers)                        │
 ├─────────────────────────────────────────────────────────────┤
 │  Native (Rust + napi-rs)                                    │
 │  └── clipboard/                                             │
-│       ├── mod.rs (模块导出)                                 │
 │       ├── monitor.rs (NSPasteboard 监控)                    │
 │       └── types.rs (Rust 类型定义)                          │
 └─────────────────────────────────────────────────────────────┘
@@ -225,8 +227,55 @@ Before completing any task:
 - `clipboard_read()` - 读取剪贴板内容，返回结构化数据
 - `clipboard_change_count()` - 获取 NSPasteboard changeCount 用于轮询检测
 - 支持类型: plain text, RTF, HTML, PNG/TIFF images, file URLs
-- URL 自动检测 - 使用 regex 提取文本中的链接
 - 来源应用识别 - 通过 NSWorkspace 获取前台应用信息
+
+---
+
+## Best Practices
+
+### 非抢焦点弹窗 (Non-Focus-Stealing Popup)
+
+在 macOS 上实现类似 Paste App 的弹窗体验，关键是让弹窗出现时不抢夺其他应用的焦点。
+
+**核心配置** (`src/main/index.ts`):
+```typescript
+popupWindow = new BrowserWindow({
+  type: 'panel',           // 使用 NSPanel 而非 NSWindow
+  focusable: false,        // 窗口不可获取焦点
+  alwaysOnTop: true,
+  // ...
+});
+
+// 显示时使用 showInactive() 而非 show()
+popupWindow.showInactive();
+```
+
+**键盘导航**：由于窗口不可聚焦，无法接收键盘事件。解决方案是在弹窗可见时临时注册全局快捷键：
+```typescript
+function registerPopupKeyboardShortcuts(): void {
+  globalShortcut.register('Escape', hidePopup);
+  globalShortcut.register('Left', () => send('navigate', 'left'));
+  globalShortcut.register('Return', () => send('select'));
+  // ...
+}
+
+function hidePopup(): void {
+  popupWindow.hide();
+  unregisterPopupKeyboardShortcuts();  // 隐藏时取消注册
+}
+```
+
+**IPC 通信**：通过 `webContents.send()` 将键盘事件发送到渲染进程处理。
+
+### 多窗口 IPC 广播
+
+当有多个窗口（主窗口 + 弹窗）时，需要将事件广播到所有窗口：
+```typescript
+service.on('clipboard-change', (item) => {
+  mainWindow.webContents.send('clipboard:item-added', item);
+  popupWindow?.webContents.send('clipboard:item-added', item);
+});
+```
 
 ---
 

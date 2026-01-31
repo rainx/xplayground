@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow, globalShortcut, screen } from 'electron';
 import { join } from 'path';
 import { getClipboardService } from './services/clipboard';
 import { registerClipboardHandlers, registerWindowHandlers } from './services/clipboard/handlers';
+import { getMigrationService } from './services/migration';
+import { getCryptoService } from './services/crypto';
 
 let mainWindow: BrowserWindow | null = null;
 let popupWindow: BrowserWindow | null = null;
@@ -203,6 +205,20 @@ function togglePopupWindow(): void {
 
 async function initializeServices(window: BrowserWindow): Promise<void> {
   try {
+    // Initialize crypto service first
+    const cryptoService = getCryptoService();
+    await cryptoService.initialize();
+    console.log('Crypto service initialized');
+
+    // Check and run migration if needed
+    const migrationService = getMigrationService();
+    await migrationService.initialize();
+
+    if (await migrationService.needsMigration()) {
+      console.log('Migration needed, starting...');
+      await migrationService.migrate();
+    }
+
     // Initialize clipboard service
     const clipboardService = getClipboardService();
     await clipboardService.initialize();
@@ -212,7 +228,7 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
 
     console.log('Clipboard service initialized');
   } catch (error) {
-    console.error('Failed to initialize clipboard service:', error);
+    console.error('Failed to initialize services:', error);
     // Still register handlers even if initialization fails
     // This allows the app to work in a degraded state
     const clipboardService = getClipboardService();
@@ -293,4 +309,8 @@ app.on('quit', () => {
   // Cleanup
   const clipboardService = getClipboardService();
   clipboardService.destroy();
+
+  // Clear crypto keys from memory
+  const cryptoService = getCryptoService();
+  cryptoService.shutdown();
 });

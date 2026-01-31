@@ -1,11 +1,12 @@
 /**
- * Category Storage - Manages category persistence
+ * Category Storage - Manages category persistence with encryption
  */
 
 import { app } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { Category, CategoryCreateInput, CategoryUpdateInput } from './types';
+import { CryptoService, getCryptoService, isEncrypted } from '../crypto';
 
 const DEFAULT_COLORS = [
   '#4285f4', // Blue
@@ -23,6 +24,12 @@ export class CategoryStorage {
   private categoriesCache: Category[] = [];
   private initialized: boolean = false;
   private colorIndex: number = 0;
+  private cryptoService: CryptoService;
+  private encryptionEnabled: boolean = true;
+
+  constructor() {
+    this.cryptoService = getCryptoService();
+  }
 
   private initPaths(): void {
     if (this.initialized) return;
@@ -34,14 +41,25 @@ export class CategoryStorage {
 
   async initialize(): Promise<void> {
     this.initPaths();
+    // CryptoService should already be initialized by ClipboardStorage
     await this.loadCategories();
   }
 
   private async loadCategories(): Promise<void> {
     try {
-      const data = await fs.readFile(this.categoriesPath, 'utf-8');
-      const parsed = JSON.parse(data);
-      this.categoriesCache = parsed.categories || [];
+      const fileData = await fs.readFile(this.categoriesPath);
+
+      if (this.encryptionEnabled && isEncrypted(fileData)) {
+        const parsed = await this.cryptoService.readAndDecryptJSON<{ categories: Category[] }>(
+          this.categoriesPath,
+          'category'
+        );
+        this.categoriesCache = parsed.categories || [];
+      } else {
+        const data = fileData.toString('utf-8');
+        const parsed = JSON.parse(data);
+        this.categoriesCache = parsed.categories || [];
+      }
       this.colorIndex = this.categoriesCache.length % DEFAULT_COLORS.length;
     } catch {
       this.categoriesCache = [];
@@ -59,7 +77,11 @@ export class CategoryStorage {
     const dir = path.dirname(this.categoriesPath);
     await fs.mkdir(dir, { recursive: true });
 
-    await fs.writeFile(this.categoriesPath, JSON.stringify(data, null, 2));
+    if (this.encryptionEnabled) {
+      await this.cryptoService.encryptAndWriteJSON(this.categoriesPath, data, 'category');
+    } else {
+      await fs.writeFile(this.categoriesPath, JSON.stringify(data, null, 2));
+    }
   }
 
   private generateId(): string {

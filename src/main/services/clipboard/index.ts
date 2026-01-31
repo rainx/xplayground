@@ -281,8 +281,17 @@ export class ClipboardService extends EventEmitter {
         break;
       case 'image':
         if (item.imageContent) {
-          const image = nativeImage.createFromPath(item.imageContent.originalPath);
-          clipboard.writeImage(image);
+          // Handle encrypted images
+          if (item.imageContent.originalPath.endsWith('.enc')) {
+            const imageData = await this.storage.getImageData(item.imageContent.originalPath);
+            if (imageData) {
+              const image = nativeImage.createFromBuffer(imageData);
+              clipboard.writeImage(image);
+            }
+          } else {
+            const image = nativeImage.createFromPath(item.imageContent.originalPath);
+            clipboard.writeImage(image);
+          }
         }
         break;
       // Files would require different handling
@@ -324,6 +333,10 @@ export class ClipboardService extends EventEmitter {
 
   async duplicateItem(itemId: string): Promise<ClipboardItem | null> {
     return this.storage.duplicateItem(itemId);
+  }
+
+  async getImageData(imagePath: string): Promise<Buffer | null> {
+    return this.storage.getImageData(imagePath);
   }
 
   async clearHistory(): Promise<string[]> {

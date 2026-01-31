@@ -1,11 +1,12 @@
 /**
- * Clipboard Storage - iCloud Drive based storage
+ * Clipboard Storage - iCloud Drive based storage with encryption
  */
 
 import { app } from 'electron';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { ClipboardItem, ClipboardManagerSettings, SearchFilter } from './types';
+import { CryptoService, getCryptoService, isEncrypted } from '../crypto';
 
 export class ClipboardStorage {
   private basePath: string = '';
@@ -14,6 +15,8 @@ export class ClipboardStorage {
   private indexCache: ClipboardItem[] = [];
   private settings: ClipboardManagerSettings;
   private initialized: boolean = false;
+  private cryptoService: CryptoService;
+  private encryptionEnabled: boolean = true;
 
   constructor() {
     this.settings = {
@@ -21,6 +24,7 @@ export class ClipboardStorage {
       retentionDays: 30,
       iCloudSyncEnabled: true,
     };
+    this.cryptoService = getCryptoService();
   }
 
   private initPaths(): void {
@@ -50,6 +54,10 @@ export class ClipboardStorage {
     await fs.mkdir(path.join(this.assetsPath, 'thumbnails'), { recursive: true });
     await fs.mkdir(path.join(this.assetsPath, 'icons'), { recursive: true });
 
+    // Initialize crypto service
+    await this.cryptoService.initialize();
+    console.log('[ClipboardStorage] Crypto service initialized');
+
     // Load index
     await this.loadIndex();
 
@@ -68,9 +76,24 @@ export class ClipboardStorage {
   private async loadIndex(): Promise<void> {
     try {
       const indexPath = this.getIndexPath();
-      const data = await fs.readFile(indexPath, 'utf-8');
-      const parsed = JSON.parse(data);
-      this.indexCache = parsed.items || [];
+      const fileData = await fs.readFile(indexPath);
+
+      // Check if file is encrypted
+      if (this.encryptionEnabled && isEncrypted(fileData)) {
+        // Decrypt the file
+        const parsed = await this.cryptoService.readAndDecryptJSON<{ items: ClipboardItem[] }>(
+          indexPath,
+          'index'
+        );
+        this.indexCache = parsed.items || [];
+        console.log('[ClipboardStorage] Loaded encrypted index');
+      } else {
+        // Legacy unencrypted format
+        const data = fileData.toString('utf-8');
+        const parsed = JSON.parse(data);
+        this.indexCache = parsed.items || [];
+        console.log('[ClipboardStorage] Loaded unencrypted index (will migrate)');
+      }
     } catch {
       // Index doesn't exist yet
       this.indexCache = [];
@@ -85,7 +108,11 @@ export class ClipboardStorage {
       items: this.indexCache,
     };
     try {
-      await fs.writeFile(indexPath, JSON.stringify(data, null, 2));
+      if (this.encryptionEnabled) {
+        await this.cryptoService.encryptAndWriteJSON(indexPath, data, 'index');
+      } else {
+        await fs.writeFile(indexPath, JSON.stringify(data, null, 2));
+      }
       console.log(`[ClipboardStorage] Index saved: ${this.indexCache.length} items`);
     } catch (error) {
       console.error('[ClipboardStorage] Failed to save index:', error);
@@ -96,8 +123,18 @@ export class ClipboardStorage {
   private async loadSettings(): Promise<void> {
     try {
       const settingsPath = this.getSettingsPath();
-      const data = await fs.readFile(settingsPath, 'utf-8');
-      this.settings = { ...this.settings, ...JSON.parse(data) };
+      const fileData = await fs.readFile(settingsPath);
+
+      if (this.encryptionEnabled && isEncrypted(fileData)) {
+        const loaded = await this.cryptoService.readAndDecryptJSON<ClipboardManagerSettings>(
+          settingsPath,
+          'settings'
+        );
+        this.settings = { ...this.settings, ...loaded };
+      } else {
+        const data = fileData.toString('utf-8');
+        this.settings = { ...this.settings, ...JSON.parse(data) };
+      }
     } catch {
       // Settings don't exist yet, use defaults
     }
@@ -106,7 +143,12 @@ export class ClipboardStorage {
   async saveSettings(settings: Partial<ClipboardManagerSettings>): Promise<void> {
     this.settings = { ...this.settings, ...settings };
     const settingsPath = this.getSettingsPath();
-    await fs.writeFile(settingsPath, JSON.stringify(this.settings, null, 2));
+
+    if (this.encryptionEnabled) {
+      await this.cryptoService.encryptAndWriteJSON(settingsPath, this.settings, 'settings');
+    } else {
+      await fs.writeFile(settingsPath, JSON.stringify(this.settings, null, 2));
+    }
   }
 
   getSettings(): ClipboardManagerSettings {
@@ -139,7 +181,12 @@ export class ClipboardStorage {
     const itemDir = path.join(this.dataPath, 'items', yearMonth);
     await fs.mkdir(itemDir, { recursive: true });
     const itemPath = path.join(itemDir, `${item.id}.json`);
-    await fs.writeFile(itemPath, JSON.stringify(item, null, 2));
+
+    if (this.encryptionEnabled) {
+      await this.cryptoService.encryptAndWriteJSON(itemPath, item, 'item');
+    } else {
+      await fs.writeFile(itemPath, JSON.stringify(item, null, 2));
+    }
   }
 
   async getItem(id: string): Promise<ClipboardItem | null> {
@@ -151,8 +198,13 @@ export class ClipboardStorage {
     const itemPath = path.join(this.dataPath, 'items', yearMonth, `${id}.json`);
 
     try {
-      const data = await fs.readFile(itemPath, 'utf-8');
-      return JSON.parse(data);
+      const fileData = await fs.readFile(itemPath);
+
+      if (this.encryptionEnabled && isEncrypted(fileData)) {
+        return await this.cryptoService.readAndDecryptJSON<ClipboardItem>(itemPath, 'item');
+      } else {
+        return JSON.parse(fileData.toString('utf-8'));
+      }
     } catch {
       return indexItem; // Return index version if full data not found
     }
@@ -272,24 +324,41 @@ export class ClipboardStorage {
     imageData: Buffer,
     format: string
   ): Promise<{ originalPath: string; thumbnailPath: string }> {
-    const originalPath = path.join(
-      this.assetsPath,
-      'images',
-      `${itemId}.${format}`
-    );
-    const thumbnailPath = path.join(
-      this.assetsPath,
-      'thumbnails',
-      `${itemId}.png`
-    );
+    // Use .enc extension for encrypted files
+    const ext = this.encryptionEnabled ? 'enc' : format;
+    const thumbExt = this.encryptionEnabled ? 'enc' : 'png';
 
-    // Save original
-    await fs.writeFile(originalPath, imageData);
+    const originalPath = path.join(this.assetsPath, 'images', `${itemId}.${ext}`);
+    const thumbnailPath = path.join(this.assetsPath, 'thumbnails', `${itemId}.${thumbExt}`);
 
-    // For now, just copy as thumbnail (proper thumbnail generation would use sharp or similar)
-    await fs.writeFile(thumbnailPath, imageData);
+    if (this.encryptionEnabled) {
+      // Save encrypted original
+      await this.cryptoService.encryptAndWriteBuffer(originalPath, imageData, 'image');
+      // Save encrypted thumbnail (same data for now)
+      await this.cryptoService.encryptAndWriteBuffer(thumbnailPath, imageData, 'image');
+    } else {
+      // Save original
+      await fs.writeFile(originalPath, imageData);
+      // For now, just copy as thumbnail
+      await fs.writeFile(thumbnailPath, imageData);
+    }
 
     return { originalPath, thumbnailPath };
+  }
+
+  /**
+   * Read and decrypt image data (for IPC handler)
+   */
+  async getImageData(imagePath: string): Promise<Buffer | null> {
+    try {
+      if (this.encryptionEnabled && imagePath.endsWith('.enc')) {
+        return await this.cryptoService.readAndDecryptBuffer(imagePath, 'image');
+      } else {
+        return await fs.readFile(imagePath);
+      }
+    } catch {
+      return null;
+    }
   }
 
   getAssetsPath(): string {
@@ -382,7 +451,11 @@ export class ClipboardStorage {
     const yearMonth = item.createdAt.substring(0, 7);
     const itemPath = path.join(this.dataPath, 'items', yearMonth, `${item.id}.json`);
     try {
-      await fs.writeFile(itemPath, JSON.stringify(item, null, 2));
+      if (this.encryptionEnabled) {
+        await this.cryptoService.encryptAndWriteJSON(itemPath, item, 'item');
+      } else {
+        await fs.writeFile(itemPath, JSON.stringify(item, null, 2));
+      }
     } catch {
       // File might not exist, that's okay
     }
@@ -409,13 +482,29 @@ export class ClipboardStorage {
       const format = duplicatedItem.imageContent.format;
 
       if (originalPath) {
-        const newOriginalPath = path.join(this.assetsPath, 'images', `${newId}.${format}`);
-        const newThumbnailPath = path.join(this.assetsPath, 'thumbnails', `${newId}.png`);
+        const ext = this.encryptionEnabled ? 'enc' : format;
+        const thumbExt = this.encryptionEnabled ? 'enc' : 'png';
+        const newOriginalPath = path.join(this.assetsPath, 'images', `${newId}.${ext}`);
+        const newThumbnailPath = path.join(this.assetsPath, 'thumbnails', `${newId}.${thumbExt}`);
 
         try {
-          await fs.copyFile(originalPath, newOriginalPath);
-          if (thumbnailPath) {
-            await fs.copyFile(thumbnailPath, newThumbnailPath);
+          if (this.encryptionEnabled) {
+            // Decrypt original, then re-encrypt with new path-based key
+            const imageData = await this.getImageData(originalPath);
+            if (imageData) {
+              await this.cryptoService.encryptAndWriteBuffer(newOriginalPath, imageData, 'image');
+            }
+            if (thumbnailPath) {
+              const thumbData = await this.getImageData(thumbnailPath);
+              if (thumbData) {
+                await this.cryptoService.encryptAndWriteBuffer(newThumbnailPath, thumbData, 'image');
+              }
+            }
+          } else {
+            await fs.copyFile(originalPath, newOriginalPath);
+            if (thumbnailPath) {
+              await fs.copyFile(thumbnailPath, newThumbnailPath);
+            }
           }
           duplicatedItem.imageContent = {
             ...duplicatedItem.imageContent,

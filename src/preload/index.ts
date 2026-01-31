@@ -134,6 +134,10 @@ const api = {
     duplicateItem: (id: string) =>
       ipcRenderer.invoke('clipboard:duplicate-item', id),
 
+    // Get decrypted image data (for encrypted images)
+    getImageData: (imagePath: string): Promise<{ success: boolean; data: string | null }> =>
+      ipcRenderer.invoke('clipboard:get-image-data', imagePath),
+
     // Category operations
     categories: {
       getAll: () =>

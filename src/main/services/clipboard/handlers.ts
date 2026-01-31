@@ -235,6 +235,15 @@ export function registerClipboardHandlers(
     }
     return newItem;
   });
+
+  // Get decrypted image data (for encrypted images)
+  ipcMain.handle('clipboard:get-image-data', async (_event, imagePath: string) => {
+    const imageData = await service.getImageData(imagePath);
+    if (imageData) {
+      return { success: true, data: imageData.toString('base64') };
+    }
+    return { success: false, data: null };
+  });
 }
 
 export function registerWindowHandlers(mainWindow: BrowserWindow, popupWindow?: BrowserWindow | null): void {
@@ -309,4 +318,5 @@ export function unregisterClipboardHandlers(): void {
   ipcMain.removeHandler('clipboard:clear-item-categories');
   ipcMain.removeHandler('clipboard:get-items-by-category');
   ipcMain.removeHandler('clipboard:duplicate-item');
+  ipcMain.removeHandler('clipboard:get-image-data');
 }

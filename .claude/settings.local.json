@@ -24,7 +24,9 @@
       "Bash(git commit:*)",
       "Bash(sips -g all:*)",
       "Bash(pnpm add:*)",
-      "Bash(node scripts/fix-icon-transparency.mjs:*)"
+      "Bash(node scripts/fix-icon-transparency.mjs:*)",
+      "Skill(commit-commands:commit)",
+      "Skill(commit-commands:commit:*)"
     ]
   }
 }

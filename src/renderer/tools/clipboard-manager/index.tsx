@@ -10,7 +10,7 @@
  */
 
 import { ToolMetadata, ToolComponent } from '@/shared/types';
-import { ClipboardManager } from './ClipboardManager';
+import { ClipboardManager } from './clipboard-manager';
 
 export const metadata: ToolMetadata = {
   id: 'clipboard-manager',

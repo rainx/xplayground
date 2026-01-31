@@ -3,10 +3,10 @@
  */
 
 import { useState, useMemo } from 'react';
-import { ClipboardStrip } from './components/ClipboardStrip';
-import { SearchBar } from './components/SearchBar';
-import { useClipboardHistory } from './hooks/useClipboardHistory';
-import { useSearch } from './hooks/useSearch';
+import { ClipboardStrip } from './components/clipboard-strip';
+import { SearchBar } from './components/search-bar';
+import { useClipboardHistory } from './hooks/use-clipboard-history';
+import { useSearch } from './hooks/use-search';
 import './styles/clipboard-manager.css';
 
 export function ClipboardManager(): JSX.Element {

@@ -3,7 +3,7 @@
  */
 
 import { useRef, useEffect, useCallback } from 'react';
-import { ClipboardItem } from './ClipboardItem';
+import { ClipboardItem } from './clipboard-item';
 import type { ClipboardItem as ClipboardItemType } from '../types';
 
 interface ClipboardStripProps {

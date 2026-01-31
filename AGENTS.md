@@ -157,6 +157,10 @@ cargo test
 - **TypeScript**: Strict mode, no `any` types
 - **React**: Functional components with hooks
 - **Rust**: Follow standard Rust idioms, use `clippy`
+- **Naming Conventions**:
+  - Files: `kebab-case.ts`, `kebab-case.tsx` (e.g., `tool-container.tsx`, `clipboard-manager.tsx`)
+  - Components: PascalCase (e.g., `ToolContainer`)
+  - Folders: `kebab-case`
 - **Testing**: Every new feature requires tests before merging
 - **Commits**: Conventional commits format (`feat:`, `fix:`, `chore:`)
 
@@ -197,10 +201,10 @@ Before completing any task:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Renderer (React)                                           │
-│  └── ClipboardManager.tsx                                   │
-│       ├── ClipboardStrip.tsx (横向历史条)                    │
-│       ├── ClipboardItem.tsx (单个项目卡片)                   │
-│       └── SearchBar.tsx (搜索过滤)                          │
+│  └── clipboard-manager.tsx                                  │
+│       ├── clipboard-strip.tsx (横向历史条)                   │
+│       ├── clipboard-item.tsx (单个项目卡片)                  │
+│       └── search-bar.tsx (搜索过滤)                         │
 ├─────────────────────────────────────────────────────────────┤
 │  Main Process                                               │
 │  └── services/clipboard/                                    │

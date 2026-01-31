@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { ToolContainer } from './components/ToolContainer';
+import { Sidebar } from './components/sidebar';
+import { ToolContainer } from './components/tool-container';
 import { toolRegistry } from './tools/registry';
 
 function App(): JSX.Element {

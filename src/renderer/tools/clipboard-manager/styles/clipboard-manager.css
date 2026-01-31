@@ -984,6 +984,13 @@
   color: var(--text-secondary);
 }
 
+.context-menu-icon-left {
+  min-width: 24px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .context-menu-divider {
   height: 1px;
   background: var(--border);

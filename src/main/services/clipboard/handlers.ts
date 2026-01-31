@@ -2,7 +2,8 @@
  * IPC Handlers for Clipboard Service
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, shell } from 'electron';
+import { exec } from 'child_process';
 import { ClipboardService } from './index';
 import { CategoryStorage } from './category-storage';
 import type { SearchFilter, ClipboardManagerSettings, CategoryCreateInput, CategoryUpdateInput } from './types';
@@ -48,8 +49,32 @@ export function registerClipboardHandlers(
     return { success: deleted };
   });
 
-  ipcMain.handle('clipboard:paste-item', async (_event, id: string) => {
+  ipcMain.handle('clipboard:paste-item', async (_event, id: string, options?: { hideWindow?: boolean; simulatePaste?: boolean }) => {
     await service.pasteItem(id);
+
+    const shouldHide = options?.hideWindow ?? true;
+    const shouldSimulatePaste = options?.simulatePaste ?? true;
+
+    if (shouldHide && !mainWindow.isDestroyed()) {
+      mainWindow.hide();
+    }
+
+    if (shouldSimulatePaste) {
+      // Give the target app time to become active
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Simulate Cmd+V (macOS) or Ctrl+V (Windows/Linux) to paste
+      if (process.platform === 'darwin') {
+        exec('osascript -e \'tell application "System Events" to keystroke "v" using command down\'');
+      } else if (process.platform === 'win32') {
+        // Windows: use PowerShell to send Ctrl+V
+        exec('powershell -command "$wshell = New-Object -ComObject wscript.shell; $wshell.SendKeys(\'^v\')"');
+      } else {
+        // Linux: use xdotool
+        exec('xdotool key ctrl+v');
+      }
+    }
+
     return { success: true };
   });
 
@@ -174,6 +199,42 @@ export function registerClipboardHandlers(
       mainWindow.webContents.send('clipboard:item-added', newItem);
     }
     return newItem;
+  });
+}
+
+export function registerWindowHandlers(mainWindow: BrowserWindow): void {
+  // Show/hide window
+  ipcMain.handle('window:show', async () => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+    return { success: true };
+  });
+
+  ipcMain.handle('window:hide', async () => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.hide();
+    }
+    return { success: true };
+  });
+
+  // Open URL in default browser
+  ipcMain.handle('shell:open-external', async (_event, url: string) => {
+    await shell.openExternal(url);
+    return { success: true };
+  });
+
+  // Open file/folder in default app
+  ipcMain.handle('shell:open-path', async (_event, path: string) => {
+    await shell.openPath(path);
+    return { success: true };
+  });
+
+  // Show item in Finder/Explorer
+  ipcMain.handle('shell:show-item', async (_event, path: string) => {
+    shell.showItemInFolder(path);
+    return { success: true };
   });
 }
 

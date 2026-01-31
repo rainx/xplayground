@@ -1,7 +1,7 @@
-import { app, shell, BrowserWindow } from 'electron';
+import { app, shell, BrowserWindow, globalShortcut } from 'electron';
 import { join } from 'path';
 import { getClipboardService } from './services/clipboard';
-import { registerClipboardHandlers } from './services/clipboard/handlers';
+import { registerClipboardHandlers, registerWindowHandlers } from './services/clipboard/handlers';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -57,6 +57,29 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
   }
 }
 
+function registerGlobalShortcuts(): void {
+  // Register global shortcut to show/focus clipboard window
+  // Default: Option+Command+V (macOS) or Alt+Ctrl+V (Windows/Linux)
+  const shortcut = process.platform === 'darwin' ? 'Alt+Command+V' : 'Alt+Control+V';
+
+  const registered = globalShortcut.register(shortcut, () => {
+    if (mainWindow) {
+      if (mainWindow.isVisible() && mainWindow.isFocused()) {
+        mainWindow.hide();
+      } else {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    }
+  });
+
+  if (!registered) {
+    console.warn(`Failed to register global shortcut: ${shortcut}`);
+  } else {
+    console.log(`Global shortcut registered: ${shortcut}`);
+  }
+}
+
 app.whenReady().then(async () => {
   // Set app name for development mode (otherwise shows "Electron")
   if (!app.isPackaged) {
@@ -79,10 +102,18 @@ app.whenReady().then(async () => {
   // Initialize services after window is created
   await initializeServices(window);
 
+  // Register global shortcuts
+  registerGlobalShortcuts();
+
+  // Register window-related IPC handlers
+  registerWindowHandlers(window);
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       const newWindow = createWindow();
       initializeServices(newWindow);
+      registerGlobalShortcuts();
+      registerWindowHandlers(newWindow);
     }
   });
 });
@@ -91,6 +122,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('will-quit', () => {
+  // Unregister all global shortcuts
+  globalShortcut.unregisterAll();
 });
 
 app.on('quit', () => {

@@ -97,6 +97,43 @@ export function ClipboardManager(): JSX.Element {
     await window.api.clipboard.duplicateItem(itemId);
   }, []);
 
+  // Open item (for links and files)
+  const handleOpenItem = useCallback(async (itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    if (item.type === 'link' && item.linkContent?.url) {
+      await window.api.shell.openExternal(item.linkContent.url);
+    } else if (item.type === 'file' && item.fileContent?.files.length) {
+      // Open the first file
+      await window.api.shell.openPath(item.fileContent.files[0].path);
+    }
+  }, [items]);
+
+  // Paste as plain text (writes to clipboard without simulating paste)
+  const handlePasteAsPlainText = useCallback(async (itemId: string) => {
+    await pasteItem(itemId);
+  }, [pasteItem]);
+
+  // Copy item to clipboard (without pasting)
+  const handleCopyItem = useCallback(async (itemId: string) => {
+    await window.api.clipboard.pasteItem(itemId, { hideWindow: false, simulatePaste: false });
+  }, []);
+
+  // Pin/Unpin item (toggle)
+  const handlePinItem = useCallback(async (_itemId: string) => {
+    // TODO: Implement pin functionality when backend supports it
+    console.log('Pin functionality not yet implemented');
+  }, []);
+
+  // Preview item
+  const handlePreviewItem = useCallback(async (itemId: string) => {
+    // Select the item and show preview (could open a modal or expand view)
+    setSelectedId(itemId);
+    // TODO: Implement preview modal
+    console.log('Preview functionality - item selected:', itemId);
+  }, []);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     selectedItemId: selectedId,
@@ -348,13 +385,18 @@ export function ClipboardManager(): JSX.Element {
         <ContextMenu
           isOpen={contextMenu.isOpen}
           position={contextMenu.position}
-          itemId={contextMenu.itemId}
-          itemCategoryIds={selectedItem.pinboardIds || []}
+          item={selectedItem}
           categories={categories}
+          onPaste={handlePaste}
+          onPasteAsPlainText={handlePasteAsPlainText}
+          onCopy={handleCopyItem}
+          onOpen={handleOpenItem}
           onAssignCategory={assignItemToCategory}
           onRemoveCategory={removeItemFromCategory}
           onDuplicate={handleDuplicateItem}
           onDelete={handleDelete}
+          onPin={handlePinItem}
+          onPreview={handlePreviewItem}
           onClose={closeContextMenu}
         />
       )}

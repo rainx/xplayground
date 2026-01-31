@@ -105,11 +105,20 @@ export interface CategoryUpdateInput {
 declare global {
   interface Window {
     api: {
+      window: {
+        show: () => Promise<{ success: boolean }>;
+        hide: () => Promise<{ success: boolean }>;
+      };
+      shell: {
+        openExternal: (url: string) => Promise<{ success: boolean }>;
+        openPath: (path: string) => Promise<{ success: boolean }>;
+        showItemInFolder: (path: string) => Promise<{ success: boolean }>;
+      };
       clipboard: {
         getHistory: (options?: { limit?: number; offset?: number }) => Promise<ClipboardHistoryResponse>;
         getItem: (id: string) => Promise<ClipboardItem | null>;
         deleteItem: (id: string) => Promise<{ success: boolean }>;
-        pasteItem: (id: string) => Promise<{ success: boolean }>;
+        pasteItem: (id: string, options?: { hideWindow?: boolean; simulatePaste?: boolean }) => Promise<{ success: boolean }>;
         search: (filter: SearchFilter) => Promise<ClipboardItem[]>;
         getSettings: () => Promise<Record<string, unknown>>;
         updateSettings: (settings: Record<string, unknown>) => Promise<{ success: boolean }>;

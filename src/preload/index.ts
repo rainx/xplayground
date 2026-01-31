@@ -36,6 +36,19 @@ const api = {
   invokeNative: (method: string, ...args: unknown[]) =>
     ipcRenderer.invoke('native:invoke', method, ...args),
 
+  // Window APIs
+  window: {
+    show: () => ipcRenderer.invoke('window:show'),
+    hide: () => ipcRenderer.invoke('window:hide'),
+  },
+
+  // Shell APIs (open URLs, files, etc.)
+  shell: {
+    openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
+    openPath: (path: string) => ipcRenderer.invoke('shell:open-path', path),
+    showItemInFolder: (path: string) => ipcRenderer.invoke('shell:show-item', path),
+  },
+
   // Clipboard Manager APIs
   clipboard: {
     // History operations
@@ -48,8 +61,8 @@ const api = {
     deleteItem: (id: string) =>
       ipcRenderer.invoke('clipboard:delete-item', id),
 
-    pasteItem: (id: string) =>
-      ipcRenderer.invoke('clipboard:paste-item', id),
+    pasteItem: (id: string, options?: { hideWindow?: boolean; simulatePaste?: boolean }) =>
+      ipcRenderer.invoke('clipboard:paste-item', id, options),
 
     // Search
     search: (filter: SearchFilter) =>

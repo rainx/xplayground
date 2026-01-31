@@ -17,6 +17,19 @@ interface SearchFilter {
   };
 }
 
+interface CategoryCreateInput {
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+interface CategoryUpdateInput {
+  name?: string;
+  icon?: string;
+  color?: string;
+  order?: number;
+}
+
 // Custom APIs for renderer
 const api = {
   // Native Rust function invocation
@@ -69,6 +82,74 @@ const api = {
       return () => {
         ipcRenderer.removeListener('clipboard:item-deleted', handler);
       };
+    },
+
+    onItemCategoryChanged: (callback: (data: { itemId: string; categoryIds: string[] }) => void) => {
+      const handler = (_event: unknown, data: { itemId: string; categoryIds: string[] }) => callback(data);
+      ipcRenderer.on('clipboard:item-category-changed', handler);
+      return () => {
+        ipcRenderer.removeListener('clipboard:item-category-changed', handler);
+      };
+    },
+
+    // Duplicate item
+    duplicateItem: (id: string) =>
+      ipcRenderer.invoke('clipboard:duplicate-item', id),
+
+    // Category operations
+    categories: {
+      getAll: () =>
+        ipcRenderer.invoke('clipboard:get-categories'),
+
+      create: (input: CategoryCreateInput) =>
+        ipcRenderer.invoke('clipboard:create-category', input),
+
+      update: (id: string, updates: CategoryUpdateInput) =>
+        ipcRenderer.invoke('clipboard:update-category', id, updates),
+
+      delete: (id: string) =>
+        ipcRenderer.invoke('clipboard:delete-category', id),
+
+      reorder: (orderedIds: string[]) =>
+        ipcRenderer.invoke('clipboard:reorder-categories', orderedIds),
+
+      // Item-category association
+      assignItem: (itemId: string, categoryId: string) =>
+        ipcRenderer.invoke('clipboard:assign-category', itemId, categoryId),
+
+      removeItem: (itemId: string, categoryId: string) =>
+        ipcRenderer.invoke('clipboard:remove-category', itemId, categoryId),
+
+      clearItemCategories: (itemId: string) =>
+        ipcRenderer.invoke('clipboard:clear-item-categories', itemId),
+
+      getItems: (categoryId: string, options?: ClipboardHistoryOptions) =>
+        ipcRenderer.invoke('clipboard:get-items-by-category', categoryId, options),
+
+      // Event subscriptions
+      onCreated: (callback: (category: unknown) => void) => {
+        const handler = (_event: unknown, category: unknown) => callback(category);
+        ipcRenderer.on('clipboard:category-created', handler);
+        return () => {
+          ipcRenderer.removeListener('clipboard:category-created', handler);
+        };
+      },
+
+      onUpdated: (callback: (category: unknown) => void) => {
+        const handler = (_event: unknown, category: unknown) => callback(category);
+        ipcRenderer.on('clipboard:category-updated', handler);
+        return () => {
+          ipcRenderer.removeListener('clipboard:category-updated', handler);
+        };
+      },
+
+      onDeleted: (callback: (id: string) => void) => {
+        const handler = (_event: unknown, id: string) => callback(id);
+        ipcRenderer.on('clipboard:category-deleted', handler);
+        return () => {
+          ipcRenderer.removeListener('clipboard:category-deleted', handler);
+        };
+      },
     },
   },
 };

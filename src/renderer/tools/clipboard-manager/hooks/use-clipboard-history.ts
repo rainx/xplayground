@@ -63,15 +63,21 @@ export function useClipboardHistory(): UseClipboardHistoryResult {
   // Subscribe to deleted items
   useEffect(() => {
     const unsubscribe = window.api.clipboard.onItemDeleted((id: string) => {
-      setItems((prev) => prev.filter((item) => item.id !== id));
+      setItems((prev) => {
+        const newItems = prev.filter((item) => item.id !== id);
+        if (newItems.length < prev.length) {
+          setOffset((prevOffset) => Math.max(0, prevOffset - 1));
+        }
+        return newItems;
+      });
     });
 
     return unsubscribe;
   }, []);
 
   const deleteItem = useCallback(async (id: string) => {
+    // Just call the API - the onItemDeleted subscription will handle state updates
     await window.api.clipboard.deleteItem(id);
-    setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const pasteItem = useCallback(async (id: string) => {

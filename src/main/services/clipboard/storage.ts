@@ -84,7 +84,13 @@ export class ClipboardStorage {
       lastModified: new Date().toISOString(),
       items: this.indexCache,
     };
-    await fs.writeFile(indexPath, JSON.stringify(data, null, 2));
+    try {
+      await fs.writeFile(indexPath, JSON.stringify(data, null, 2));
+      console.log(`[ClipboardStorage] Index saved: ${this.indexCache.length} items`);
+    } catch (error) {
+      console.error('[ClipboardStorage] Failed to save index:', error);
+      throw error;
+    }
   }
 
   private async loadSettings(): Promise<void> {
@@ -108,6 +114,11 @@ export class ClipboardStorage {
   }
 
   async saveItem(item: ClipboardItem): Promise<void> {
+    // Skip items with empty or invalid content
+    if (!item.searchableText || !item.searchableText.trim()) {
+      return;
+    }
+
     // Save to index (at the beginning for recency)
     this.indexCache.unshift(item);
 
@@ -147,13 +158,17 @@ export class ClipboardStorage {
     }
   }
 
-  async deleteItem(id: string): Promise<void> {
+  async deleteItem(id: string): Promise<boolean> {
     const index = this.indexCache.findIndex((item) => item.id === id);
-    if (index === -1) return;
+    if (index === -1) {
+      console.warn(`[ClipboardStorage] Item not found for deletion: ${id}`);
+      return false;
+    }
 
     const item = this.indexCache[index];
     this.indexCache.splice(index, 1);
     await this.saveIndex();
+    console.log(`[ClipboardStorage] Deleted item: ${id}, remaining items: ${this.indexCache.length}`);
 
     // Delete item file
     const yearMonth = item.createdAt.substring(0, 7);
@@ -166,6 +181,7 @@ export class ClipboardStorage {
 
     // Delete assets
     await this.deleteItemAssets(item);
+    return true;
   }
 
   private async deleteItemAssets(item: ClipboardItem): Promise<void> {
@@ -190,18 +206,30 @@ export class ClipboardStorage {
     const limit = options.limit || 50;
     const offset = options.offset || 0;
 
-    const items = this.indexCache.slice(offset, offset + limit);
-    const hasMore = offset + limit < this.indexCache.length;
+    // Filter out items with empty or invalid content
+    const validItems = this.indexCache.filter(
+      (item) => item.searchableText && item.searchableText.trim().length > 0
+    );
+
+    const items = validItems.slice(offset, offset + limit);
+    const hasMore = offset + limit < validItems.length;
+
+    console.log(`[ClipboardStorage] getHistory: offset=${offset}, limit=${limit}, totalInCache=${this.indexCache.length}, validItems=${validItems.length}, returned=${items.length}, hasMore=${hasMore}`);
 
     return {
       items,
-      totalCount: this.indexCache.length,
+      totalCount: validItems.length,
       hasMore,
     };
   }
 
   async search(filter: SearchFilter): Promise<ClipboardItem[]> {
     let results = [...this.indexCache];
+
+    // Filter out items with empty or invalid searchable text
+    results = results.filter((item) =>
+      item.searchableText && item.searchableText.trim().length > 0
+    );
 
     // Filter by query
     if (filter.query) {
@@ -266,5 +294,141 @@ export class ClipboardStorage {
 
   getAssetsPath(): string {
     return this.assetsPath;
+  }
+
+  // Category association methods
+
+  async assignCategory(itemId: string, categoryId: string): Promise<boolean> {
+    const item = this.indexCache.find((i) => i.id === itemId);
+    if (!item) return false;
+
+    // Initialize pinboardIds if not exists (using pinboardIds as categoryIds)
+    if (!item.pinboardIds) {
+      item.pinboardIds = [];
+    }
+
+    // Don't add if already assigned
+    if (item.pinboardIds.includes(categoryId)) {
+      return true;
+    }
+
+    item.pinboardIds.push(categoryId);
+    await this.saveIndex();
+    await this.updateItemFile(item);
+    return true;
+  }
+
+  async removeCategory(itemId: string, categoryId: string): Promise<boolean> {
+    const item = this.indexCache.find((i) => i.id === itemId);
+    if (!item || !item.pinboardIds) return false;
+
+    const index = item.pinboardIds.indexOf(categoryId);
+    if (index === -1) return false;
+
+    item.pinboardIds.splice(index, 1);
+    await this.saveIndex();
+    await this.updateItemFile(item);
+    return true;
+  }
+
+  async clearItemCategories(itemId: string): Promise<boolean> {
+    const item = this.indexCache.find((i) => i.id === itemId);
+    if (!item) return false;
+
+    item.pinboardIds = [];
+    await this.saveIndex();
+    await this.updateItemFile(item);
+    return true;
+  }
+
+  async getItemsByCategory(
+    categoryId: string,
+    options: { limit?: number; offset?: number }
+  ): Promise<{ items: ClipboardItem[]; totalCount: number; hasMore: boolean }> {
+    const limit = options.limit || 50;
+    const offset = options.offset || 0;
+
+    const filteredItems = this.indexCache.filter(
+      (item) =>
+        item.pinboardIds &&
+        item.pinboardIds.includes(categoryId) &&
+        item.searchableText &&
+        item.searchableText.trim().length > 0
+    );
+
+    const items = filteredItems.slice(offset, offset + limit);
+    const hasMore = offset + limit < filteredItems.length;
+
+    return {
+      items,
+      totalCount: filteredItems.length,
+      hasMore,
+    };
+  }
+
+  async removeAllItemsFromCategory(categoryId: string): Promise<void> {
+    for (const item of this.indexCache) {
+      if (item.pinboardIds && item.pinboardIds.includes(categoryId)) {
+        const index = item.pinboardIds.indexOf(categoryId);
+        if (index !== -1) {
+          item.pinboardIds.splice(index, 1);
+        }
+      }
+    }
+    await this.saveIndex();
+  }
+
+  private async updateItemFile(item: ClipboardItem): Promise<void> {
+    const yearMonth = item.createdAt.substring(0, 7);
+    const itemPath = path.join(this.dataPath, 'items', yearMonth, `${item.id}.json`);
+    try {
+      await fs.writeFile(itemPath, JSON.stringify(item, null, 2));
+    } catch {
+      // File might not exist, that's okay
+    }
+  }
+
+  async duplicateItem(itemId: string): Promise<ClipboardItem | null> {
+    const originalItem = this.indexCache.find((i) => i.id === itemId);
+    if (!originalItem) return null;
+
+    const newId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const now = new Date().toISOString();
+
+    const duplicatedItem: ClipboardItem = {
+      ...originalItem,
+      id: newId,
+      createdAt: now,
+      pinboardIds: [...(originalItem.pinboardIds || [])],
+    };
+
+    // Handle image duplication if needed
+    if (duplicatedItem.imageContent) {
+      const originalPath = duplicatedItem.imageContent.originalPath;
+      const thumbnailPath = duplicatedItem.imageContent.thumbnailPath;
+      const format = duplicatedItem.imageContent.format;
+
+      if (originalPath) {
+        const newOriginalPath = path.join(this.assetsPath, 'images', `${newId}.${format}`);
+        const newThumbnailPath = path.join(this.assetsPath, 'thumbnails', `${newId}.png`);
+
+        try {
+          await fs.copyFile(originalPath, newOriginalPath);
+          if (thumbnailPath) {
+            await fs.copyFile(thumbnailPath, newThumbnailPath);
+          }
+          duplicatedItem.imageContent = {
+            ...duplicatedItem.imageContent,
+            originalPath: newOriginalPath,
+            thumbnailPath: newThumbnailPath,
+          };
+        } catch {
+          // If copy fails, keep original paths
+        }
+      }
+    }
+
+    await this.saveItem(duplicatedItem);
+    return duplicatedItem;
   }
 }

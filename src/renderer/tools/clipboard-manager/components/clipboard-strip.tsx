@@ -2,19 +2,24 @@
  * ClipboardStrip - Bottom scrollable strip of clipboard items
  */
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, DragEvent, MouseEvent } from 'react';
 import { ClipboardItem } from './clipboard-item';
-import type { ClipboardItem as ClipboardItemType } from '../types';
+import type { ClipboardItem as ClipboardItemType, Category } from '../types';
 
 interface ClipboardStripProps {
   items: ClipboardItemType[];
   loading: boolean;
   hasMore: boolean;
   selectedId: string | null;
+  categories?: Category[];
+  draggedItemId?: string | null;
   onSelectItem: (id: string) => void;
   onPasteItem: (id: string) => void;
   onDeleteItem: (id: string) => void;
   onLoadMore: () => void;
+  onDragStart?: (e: DragEvent, itemId: string) => void;
+  onDragEnd?: () => void;
+  onContextMenu?: (e: MouseEvent, itemId: string) => void;
 }
 
 export function ClipboardStrip({
@@ -22,10 +27,15 @@ export function ClipboardStrip({
   loading,
   hasMore,
   selectedId,
+  categories = [],
+  draggedItemId,
   onSelectItem,
   onPasteItem,
   onDeleteItem,
   onLoadMore,
+  onDragStart,
+  onDragEnd,
+  onContextMenu,
 }: ClipboardStripProps): JSX.Element {
   const stripRef = useRef<HTMLDivElement>(null);
 
@@ -96,9 +106,14 @@ export function ClipboardStrip({
             key={item.id}
             item={item}
             isSelected={item.id === selectedId}
+            isDragging={item.id === draggedItemId}
+            categories={categories}
             onSelect={() => onSelectItem(item.id)}
             onPaste={() => onPasteItem(item.id)}
             onDelete={() => onDeleteItem(item.id)}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onContextMenu={onContextMenu}
           />
         ))}
         {loading && (

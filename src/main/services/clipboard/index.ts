@@ -21,12 +21,9 @@ import type {
 export class ClipboardService extends EventEmitter {
   private storage: ClipboardStorage;
   private pollInterval: NodeJS.Timeout | null = null;
-  // private lastChangeCount = 0;
   private isMonitoring = false;
-
-  // We'll use Electron's built-in clipboard for now
-  // Native module will be used when Rust is compiled
-  // private useNativeModule = false;
+  // Track last seen clipboard content to prevent re-adding after deletion
+  private lastSeenContent: ClipboardItem | null = null;
 
   constructor() {
     super();
@@ -65,14 +62,25 @@ export class ClipboardService extends EventEmitter {
       const item = await this.readClipboardElectron();
 
       if (item) {
-        // Check if this is actually new content
-        const lastItem = (await this.storage.getHistory({ limit: 1 })).items[0];
-
-        if (lastItem && this.isSameContent(lastItem, item)) {
+        // Check if this is the same as last seen content (prevents re-adding after deletion)
+        if (this.lastSeenContent && this.isSameContent(this.lastSeenContent, item)) {
           return;
         }
 
+        // Update last seen content BEFORE any other checks
+        // This ensures even if we skip saving, we won't re-check the same content
+        this.lastSeenContent = item;
+
+        // Check against recent history to avoid duplicates
+        const recentItems = (await this.storage.getHistory({ limit: 5 })).items;
+        for (const historyItem of recentItems) {
+          if (this.isSameContent(historyItem, item)) {
+            return;
+          }
+        }
+
         // Save and emit
+        console.log(`[ClipboardService] New clipboard item: ${item.type}, content: ${item.searchableText?.substring(0, 50)}`);
         await this.storage.saveItem(item);
         this.emit('clipboard-change', item);
       }
@@ -121,7 +129,18 @@ export class ClipboardService extends EventEmitter {
     const image = clipboard.readImage();
     if (!image.isEmpty()) {
       const size = image.getSize();
+
+      // Skip very small images (likely empty or placeholder)
+      if (size.width < 4 || size.height < 4) {
+        return null;
+      }
+
       const pngBuffer = image.toPNG();
+
+      // Skip images with very small data size (likely empty/transparent)
+      if (pngBuffer.length < 100) {
+        return null;
+      }
 
       // Save image asset
       const { originalPath, thumbnailPath } = await this.storage.saveImageAsset(
@@ -151,7 +170,8 @@ export class ClipboardService extends EventEmitter {
 
     // Check for text
     const text = clipboard.readText();
-    if (text) {
+    // Skip empty or whitespace-only text
+    if (text && text.trim()) {
       const type = this.detectContentType(text);
 
       const item: ClipboardItem = {
@@ -239,9 +259,12 @@ export class ClipboardService extends EventEmitter {
     return this.storage.getItem(id);
   }
 
-  async deleteItem(id: string) {
-    await this.storage.deleteItem(id);
-    this.emit('item-deleted', id);
+  async deleteItem(id: string): Promise<boolean> {
+    const deleted = await this.storage.deleteItem(id);
+    if (deleted) {
+      this.emit('item-deleted', id);
+    }
+    return deleted;
   }
 
   async pasteItem(id: string): Promise<void> {
@@ -276,6 +299,31 @@ export class ClipboardService extends EventEmitter {
 
   async updateSettings(settings: Partial<ClipboardManagerSettings>) {
     await this.storage.saveSettings(settings);
+  }
+
+  // Category association methods
+  async assignCategory(itemId: string, categoryId: string): Promise<boolean> {
+    return this.storage.assignCategory(itemId, categoryId);
+  }
+
+  async removeCategory(itemId: string, categoryId: string): Promise<boolean> {
+    return this.storage.removeCategory(itemId, categoryId);
+  }
+
+  async clearItemCategories(itemId: string): Promise<boolean> {
+    return this.storage.clearItemCategories(itemId);
+  }
+
+  async getItemsByCategory(categoryId: string, options: { limit?: number; offset?: number }) {
+    return this.storage.getItemsByCategory(categoryId, options);
+  }
+
+  async removeAllItemsFromCategory(categoryId: string): Promise<void> {
+    return this.storage.removeAllItemsFromCategory(categoryId);
+  }
+
+  async duplicateItem(itemId: string): Promise<ClipboardItem | null> {
+    return this.storage.duplicateItem(itemId);
   }
 
   destroy(): void {

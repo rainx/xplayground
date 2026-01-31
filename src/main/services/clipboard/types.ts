@@ -67,6 +67,34 @@ export interface ClipboardManagerSettings {
   iCloudSyncEnabled: boolean;
 }
 
+// Category types
+export interface Category {
+  id: string;
+  name: string;
+  icon?: string;
+  color: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryWithCount extends Category {
+  itemCount: number;
+}
+
+export interface CategoryCreateInput {
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface CategoryUpdateInput {
+  name?: string;
+  icon?: string;
+  color?: string;
+  order?: number;
+}
+
 export interface SearchFilter {
   query: string;
   contentTypes?: ClipboardContentType[];

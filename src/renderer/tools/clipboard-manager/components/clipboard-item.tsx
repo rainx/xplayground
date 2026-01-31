@@ -2,27 +2,53 @@
  * ClipboardItem - Individual clipboard item card
  */
 
-import { useCallback } from 'react';
-import type { ClipboardItem as ClipboardItemType } from '../types';
+import { useCallback, DragEvent, MouseEvent } from 'react';
+import type { ClipboardItem as ClipboardItemType, Category } from '../types';
+import { CategoryBadges } from './category-badge';
 
 interface ClipboardItemProps {
   item: ClipboardItemType;
   isSelected: boolean;
+  isDragging?: boolean;
+  categories?: Category[];
   onSelect: () => void;
   onPaste: () => void;
   onDelete: () => void;
+  onDragStart?: (e: DragEvent, itemId: string) => void;
+  onDragEnd?: () => void;
+  onContextMenu?: (e: MouseEvent, itemId: string) => void;
 }
 
 export function ClipboardItem({
   item,
   isSelected,
+  isDragging = false,
+  categories = [],
   onSelect,
   onPaste,
   onDelete,
+  onDragStart,
+  onDragEnd,
+  onContextMenu,
 }: ClipboardItemProps): JSX.Element {
   const handleDoubleClick = useCallback(() => {
     onPaste();
   }, [onPaste]);
+
+  const handleDragStart = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      onDragStart?.(e, item.id);
+    },
+    [item.id, onDragStart]
+  );
+
+  const handleContextMenu = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      onContextMenu?.(e, item.id);
+    },
+    [item.id, onContextMenu]
+  );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -137,10 +163,14 @@ export function ClipboardItem({
 
   return (
     <div
-      className={`clipboard-item ${isSelected ? 'selected' : ''} type-${item.type}`}
+      className={`clipboard-item ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} type-${item.type}`}
       onClick={onSelect}
       onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
+      onContextMenu={handleContextMenu}
+      draggable={!!onDragStart}
+      onDragStart={handleDragStart}
+      onDragEnd={onDragEnd}
       tabIndex={0}
       role="button"
       aria-label={`Clipboard item: ${item.type}`}
@@ -152,6 +182,13 @@ export function ClipboardItem({
           <span className="item-source" title={item.sourceApp.bundleId}>
             {item.sourceApp.name}
           </span>
+        )}
+        {item.pinboardIds && item.pinboardIds.length > 0 && (
+          <CategoryBadges
+            categories={categories}
+            categoryIds={item.pinboardIds}
+            maxVisible={2}
+          />
         )}
       </div>
       <div className="item-content">{renderPreview()}</div>

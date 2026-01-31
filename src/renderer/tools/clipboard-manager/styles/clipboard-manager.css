@@ -989,3 +989,53 @@
   background: var(--border);
   margin: 4px 0;
 }
+
+/* Confirm Dialog */
+.confirm-dialog {
+  max-width: 320px;
+}
+
+.confirm-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.btn-danger {
+  padding: 8px 16px;
+  background: #d13438;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-danger:hover {
+  background: #b52d30;
+}
+
+/* Clear Button */
+.clear-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.clear-btn:hover {
+  background: #d13438;
+  color: white;
+}
+
+.clear-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

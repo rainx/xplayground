@@ -113,7 +113,8 @@ declare global {
         search: (filter: SearchFilter) => Promise<ClipboardItem[]>;
         getSettings: () => Promise<Record<string, unknown>>;
         updateSettings: (settings: Record<string, unknown>) => Promise<{ success: boolean }>;
-        clearHistory: () => Promise<{ success: boolean }>;
+        clearHistory: () => Promise<{ success: boolean; deletedCount: number }>;
+        clearCategoryItems: (categoryId: string) => Promise<{ success: boolean; deletedCount: number }>;
         onItemAdded: (callback: (item: ClipboardItem) => void) => () => void;
         onItemDeleted: (callback: (id: string) => void) => () => void;
         onItemCategoryChanged: (callback: (data: { itemId: string; categoryIds: string[] }) => void) => () => void;

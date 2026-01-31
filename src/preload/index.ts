@@ -66,6 +66,10 @@ const api = {
     clearHistory: () =>
       ipcRenderer.invoke('clipboard:clear-history'),
 
+    // Clear all items in a category
+    clearCategoryItems: (categoryId: string) =>
+      ipcRenderer.invoke('clipboard:clear-category-items', categoryId),
+
     // Event subscriptions
     onItemAdded: (callback: (item: unknown) => void) => {
       const handler = (_event: unknown, item: unknown) => callback(item);

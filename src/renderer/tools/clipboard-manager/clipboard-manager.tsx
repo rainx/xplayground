@@ -8,6 +8,7 @@ import { SearchBar } from './components/search-bar';
 import { CategoryTabs } from './components/category-tabs';
 import { CategorySidebar } from './components/category-sidebar';
 import { CategoryDialog } from './components/category-dialog';
+import { ConfirmDialog } from './components/confirm-dialog';
 import { ContextMenu } from './components/context-menu';
 import { useClipboardHistory } from './hooks/use-clipboard-history';
 import { useSearch } from './hooks/use-search';
@@ -28,6 +29,12 @@ export function ClipboardManager(): JSX.Element {
     position: { x: number; y: number };
     itemId: string;
   } | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const {
     items,
@@ -37,6 +44,8 @@ export function ClipboardManager(): JSX.Element {
     deleteItem,
     pasteItem,
     refresh,
+    clearAll,
+    clearCategoryItems,
   } = useClipboardHistory();
 
   const {
@@ -188,6 +197,42 @@ export function ClipboardManager(): JSX.Element {
     setContextMenu(null);
   }, []);
 
+  // Clear handlers
+  const handleClearClick = useCallback(() => {
+    const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+    const itemCount = displayItems.length;
+
+    if (itemCount === 0) return;
+
+    if (selectedCategoryId && selectedCategory) {
+      // Clear items in the selected category
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Clear Category Items',
+        message: `Delete all ${itemCount} item${itemCount !== 1 ? 's' : ''} in "${selectedCategory.name}"? This action cannot be undone.`,
+        onConfirm: async () => {
+          await clearCategoryItems(selectedCategoryId);
+          setConfirmDialog(null);
+        },
+      });
+    } else {
+      // Clear all items
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Clear All History',
+        message: `Delete all ${itemCount} item${itemCount !== 1 ? 's' : ''} from clipboard history? This action cannot be undone.`,
+        onConfirm: async () => {
+          await clearAll();
+          setConfirmDialog(null);
+        },
+      });
+    }
+  }, [selectedCategoryId, categories, displayItems.length, clearAll, clearCategoryItems]);
+
+  const closeConfirmDialog = useCallback(() => {
+    setConfirmDialog(null);
+  }, []);
+
   const selectedItem = useMemo(() => {
     if (!contextMenu) return null;
     return items.find((i) => i.id === contextMenu.itemId) || null;
@@ -240,6 +285,14 @@ export function ClipboardManager(): JSX.Element {
               onChange={handleSearchChange}
               isSearching={isSearching}
             />
+            <button
+              className="clear-btn"
+              onClick={handleClearClick}
+              disabled={loading || displayItems.length === 0}
+              title={selectedCategoryId ? 'Clear category items' : 'Clear all history'}
+            >
+              🗑
+            </button>
             <button
               className="refresh-btn"
               onClick={refresh}
@@ -303,6 +356,18 @@ export function ClipboardManager(): JSX.Element {
           onDuplicate={handleDuplicateItem}
           onDelete={handleDelete}
           onClose={closeContextMenu}
+        />
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel="Delete"
+          danger
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={closeConfirmDialog}
         />
       )}
     </div>

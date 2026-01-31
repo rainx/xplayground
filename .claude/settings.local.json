@@ -26,7 +26,12 @@
       "Bash(pnpm add:*)",
       "Bash(node scripts/fix-icon-transparency.mjs:*)",
       "Skill(commit-commands:commit)",
-      "Skill(commit-commands:commit:*)"
+      "Skill(commit-commands:commit:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(git status:*)",
+      "Bash(npm run lint:*)"
     ]
   }
 }

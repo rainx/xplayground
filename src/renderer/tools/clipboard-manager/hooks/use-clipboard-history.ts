@@ -14,6 +14,8 @@ interface UseClipboardHistoryResult {
   deleteItem: (id: string) => Promise<void>;
   pasteItem: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
+  clearAll: () => Promise<void>;
+  clearCategoryItems: (categoryId: string) => Promise<void>;
 }
 
 const LIMIT = 50;
@@ -95,6 +97,16 @@ export function useClipboardHistory(): UseClipboardHistoryResult {
     await loadItems(true);
   }, [loadItems]);
 
+  const clearAll = useCallback(async () => {
+    await window.api.clipboard.clearHistory();
+    // State updates will happen via onItemDeleted subscriptions
+  }, []);
+
+  const clearCategoryItems = useCallback(async (categoryId: string) => {
+    await window.api.clipboard.clearCategoryItems(categoryId);
+    // State updates will happen via onItemDeleted subscriptions
+  }, []);
+
   return {
     items,
     loading,
@@ -104,5 +116,7 @@ export function useClipboardHistory(): UseClipboardHistoryResult {
     deleteItem,
     pasteItem,
     refresh,
+    clearAll,
+    clearCategoryItems,
   };
 }

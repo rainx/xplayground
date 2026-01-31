@@ -431,4 +431,44 @@ export class ClipboardStorage {
     await this.saveItem(duplicatedItem);
     return duplicatedItem;
   }
+
+  async clearHistory(): Promise<string[]> {
+    const deletedIds = this.indexCache.map((item) => item.id);
+
+    // Delete all item files and assets
+    for (const item of this.indexCache) {
+      // Delete item file
+      const yearMonth = item.createdAt.substring(0, 7);
+      const itemPath = path.join(this.dataPath, 'items', yearMonth, `${item.id}.json`);
+      try {
+        await fs.unlink(itemPath);
+      } catch {
+        // File might not exist
+      }
+      // Delete assets
+      await this.deleteItemAssets(item);
+    }
+
+    // Clear the cache
+    this.indexCache = [];
+    await this.saveIndex();
+
+    return deletedIds;
+  }
+
+  async clearCategoryItems(categoryId: string): Promise<string[]> {
+    const itemsToDelete = this.indexCache.filter(
+      (item) => item.pinboardIds && item.pinboardIds.includes(categoryId)
+    );
+    const deletedIds: string[] = [];
+
+    for (const item of itemsToDelete) {
+      const deleted = await this.deleteItem(item.id);
+      if (deleted) {
+        deletedIds.push(item.id);
+      }
+    }
+
+    return deletedIds;
+  }
 }

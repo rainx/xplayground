@@ -326,6 +326,36 @@ export class ClipboardService extends EventEmitter {
     return this.storage.duplicateItem(itemId);
   }
 
+  async clearHistory(): Promise<string[]> {
+    const deletedIds = await this.storage.clearHistory();
+    // Emit deleted event for each item
+    for (const id of deletedIds) {
+      this.emit('item-deleted', id);
+    }
+    // Read current clipboard content and mark it as "seen" to prevent re-adding
+    // Any content copied before clear should not be captured again
+    const currentClipboard = await this.readClipboardElectron();
+    if (currentClipboard) {
+      this.lastSeenContent = currentClipboard;
+    }
+    return deletedIds;
+  }
+
+  async clearCategoryItems(categoryId: string): Promise<string[]> {
+    const deletedIds = await this.storage.clearCategoryItems(categoryId);
+    // Emit deleted event for each item
+    for (const id of deletedIds) {
+      this.emit('item-deleted', id);
+    }
+    // Read current clipboard content and mark it as "seen" to prevent re-adding
+    // Any content copied before clear should not be captured again
+    const currentClipboard = await this.readClipboardElectron();
+    if (currentClipboard) {
+      this.lastSeenContent = currentClipboard;
+    }
+    return deletedIds;
+  }
+
   destroy(): void {
     this.stopMonitoring();
     this.removeAllListeners();

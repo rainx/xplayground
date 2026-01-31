@@ -70,8 +70,14 @@ export function registerClipboardHandlers(
 
   // Clear history
   ipcMain.handle('clipboard:clear-history', async () => {
-    // This would need to be implemented in storage
-    return { success: true };
+    const deletedIds = await service.clearHistory();
+    return { success: true, deletedCount: deletedIds.length };
+  });
+
+  // Clear category items (delete all items in a category)
+  ipcMain.handle('clipboard:clear-category-items', async (_event, categoryId: string) => {
+    const deletedIds = await service.clearCategoryItems(categoryId);
+    return { success: true, deletedCount: deletedIds.length };
   });
 
   // Category operations
@@ -180,6 +186,7 @@ export function unregisterClipboardHandlers(): void {
   ipcMain.removeHandler('clipboard:get-settings');
   ipcMain.removeHandler('clipboard:update-settings');
   ipcMain.removeHandler('clipboard:clear-history');
+  ipcMain.removeHandler('clipboard:clear-category-items');
   // Category handlers
   ipcMain.removeHandler('clipboard:get-categories');
   ipcMain.removeHandler('clipboard:create-category');

@@ -1,0 +1,13 @@
+{
+  "extends": "@electron-toolkit/eslint-config-ts/tsconfig/main.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "../../out/main",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["./**/*.ts"]
+}

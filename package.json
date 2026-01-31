@@ -1,0 +1,64 @@
+{
+  "name": "xtoolbox",
+  "version": "0.1.0",
+  "description": "Personal Mac toolbox - clone useful features from paid apps",
+  "main": "./out/main/index.js",
+  "author": "rainx",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "build:native": "cd native && pnpm build",
+    "postinstall": "electron-builder install-app-deps",
+    "typecheck:main": "tsc --noEmit -p src/main/tsconfig.json",
+    "typecheck:preload": "tsc --noEmit -p src/preload/tsconfig.json",
+    "typecheck:renderer": "tsc --noEmit -p src/renderer/tsconfig.json",
+    "typecheck": "pnpm typecheck:main && pnpm typecheck:preload && pnpm typecheck:renderer",
+    "lint": "eslint . --ext .ts,.tsx --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "package": "electron-builder --mac --config"
+  },
+  "dependencies": {
+    "@electron-toolkit/preload": "^3.0.0",
+    "@electron-toolkit/utils": "^3.0.0"
+  },
+  "devDependencies": {
+    "@electron-toolkit/eslint-config-ts": "^2.0.0",
+    "@playwright/test": "^1.40.0",
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
+    "@types/node": "^20.10.4",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.1.0",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "electron-vite": "^2.0.0",
+    "eslint": "^8.55.0",
+    "jsdom": "^23.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
+    "vitest": "^1.1.0"
+  },
+  "build": {
+    "appId": "com.rainx.xtoolbox",
+    "productName": "xToolbox",
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": ["dmg", "zip"]
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "xtoolbox-native",
+  "version": "0.1.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "xtoolbox-native",
+    "triples": {
+      "defaults": false,
+      "additional": [
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "test": "cargo test"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0"
+  }
+}

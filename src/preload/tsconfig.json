@@ -1,0 +1,9 @@
+{
+  "extends": "@electron-toolkit/eslint-config-ts/tsconfig/preload.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "../../out/preload",
+    "strict": true
+  },
+  "include": ["./**/*.ts"]
+}

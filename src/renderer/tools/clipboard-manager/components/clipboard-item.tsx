@@ -5,6 +5,7 @@
 import { useCallback, DragEvent, MouseEvent } from 'react';
 import type { ClipboardItem as ClipboardItemType, Category } from '../types';
 import { CategoryBadges } from './category-badge';
+import { ImagePreview } from './image-preview';
 
 interface ClipboardItemProps {
   item: ClipboardItemType;
@@ -92,12 +93,14 @@ export function ClipboardItem({
         return (
           <div className="preview-image">
             {item.imageContent?.thumbnailPath ? (
-              <img
-                src={`file://${item.imageContent.thumbnailPath}`}
+              <ImagePreview
+                imagePath={item.imageContent.thumbnailPath}
                 alt="Clipboard image"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
+                fallback={
+                  <div className="image-placeholder">
+                    🖼️ {item.imageContent?.width}×{item.imageContent?.height}
+                  </div>
+                }
               />
             ) : (
               <div className="image-placeholder">

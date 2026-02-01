@@ -237,16 +237,30 @@ export class ClipboardStorage {
   }
 
   private async deleteItemAssets(item: ClipboardItem): Promise<void> {
+    // Delete image assets (each in its own try-catch to ensure both are attempted)
     if (item.imageContent) {
-      try {
-        if (item.imageContent.originalPath) {
+      if (item.imageContent.originalPath) {
+        try {
           await fs.unlink(item.imageContent.originalPath);
+        } catch {
+          // Asset might not exist
         }
-        if (item.imageContent.thumbnailPath) {
+      }
+      if (item.imageContent.thumbnailPath) {
+        try {
           await fs.unlink(item.imageContent.thumbnailPath);
+        } catch {
+          // Asset might not exist
         }
+      }
+    }
+
+    // Delete link favicon asset
+    if (item.linkContent?.faviconPath) {
+      try {
+        await fs.unlink(item.linkContent.faviconPath);
       } catch {
-        // Assets might not exist
+        // Asset might not exist
       }
     }
   }

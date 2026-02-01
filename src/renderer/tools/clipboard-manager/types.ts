@@ -133,6 +133,7 @@ declare global {
         onItemDeleted: (callback: (id: string) => void) => () => void;
         onItemCategoryChanged: (callback: (data: { itemId: string; categoryIds: string[] }) => void) => () => void;
         duplicateItem: (id: string) => Promise<ClipboardItem | null>;
+        getImageData: (imagePath: string) => Promise<{ success: boolean; data: string | null }>;
         categories: {
           getAll: () => Promise<Category[]>;
           create: (input: CategoryCreateInput) => Promise<Category>;

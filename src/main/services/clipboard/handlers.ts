@@ -344,6 +344,26 @@ export function registerWindowHandlers(mainWindow: BrowserWindow, popupWindow?: 
     }
     return { success: true };
   });
+
+  // Open main window with a specific dialog (for edit/AI modify from popup)
+  ipcMain.handle('popup:open-main-with-dialog', async (_event, dialogType: 'edit' | 'ai-modify', itemId: string) => {
+    // Hide popup window
+    if (popupWindow && !popupWindow.isDestroyed()) {
+      popupWindow.hide();
+      popupWindow.setFocusable(false);
+    }
+
+    // Show and focus main window
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.focus();
+
+      // Send event to main window to open the dialog
+      mainWindow.webContents.send('main:open-dialog', dialogType, itemId);
+    }
+
+    return { success: true };
+  });
 }
 
 export function unregisterClipboardHandlers(): void {

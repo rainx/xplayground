@@ -61,6 +61,21 @@ const api = {
     // Enable/disable focus for text input (e.g., category editing)
     setFocusable: (focusable: boolean) =>
       ipcRenderer.invoke('popup:set-focusable', focusable),
+    // Open main window with a specific dialog (for edit/AI modify from popup)
+    openMainWithDialog: (dialogType: 'edit' | 'ai-modify', itemId: string) =>
+      ipcRenderer.invoke('popup:open-main-with-dialog', dialogType, itemId),
+  },
+
+  // Main window APIs (for receiving dialog open requests)
+  mainWindow: {
+    onOpenDialog: (callback: (dialogType: 'edit' | 'ai-modify', itemId: string) => void) => {
+      const handler = (_event: unknown, dialogType: 'edit' | 'ai-modify', itemId: string) =>
+        callback(dialogType, itemId);
+      ipcRenderer.on('main:open-dialog', handler);
+      return () => {
+        ipcRenderer.removeListener('main:open-dialog', handler);
+      };
+    },
   },
 
   // Shell APIs (open URLs, files, etc.)

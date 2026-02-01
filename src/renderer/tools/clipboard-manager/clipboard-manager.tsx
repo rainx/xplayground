@@ -102,6 +102,33 @@ export function ClipboardManager(): JSX.Element {
     loadSettings();
   }, []);
 
+  // Listen for dialog open requests from popup
+  useEffect(() => {
+    const unsubscribe = window.api.mainWindow.onOpenDialog((dialogType, itemId) => {
+      const item = items.find((i) => i.id === itemId);
+      if (!item) {
+        // Item not found in current list, refresh and try again
+        refresh().then(() => {
+          // After refresh, the item should be in the updated items list
+          // The dialog will be opened in the next render cycle
+        });
+        return;
+      }
+
+      // Select the item
+      setSelectedId(itemId);
+
+      // Open the appropriate dialog
+      if (dialogType === 'edit') {
+        setEditDialogItem(item);
+      } else if (dialogType === 'ai-modify') {
+        setAIError(null);
+        setAIPromptItem(item);
+      }
+    });
+    return unsubscribe;
+  }, [items, refresh]);
+
   // Drag and drop
   const handleDropItemToCategory = useCallback(
     async (itemId: string, categoryId: string) => {

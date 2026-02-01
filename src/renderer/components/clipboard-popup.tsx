@@ -149,16 +149,14 @@ export function ClipboardPopup(): JSX.Element {
     console.log('Preview functionality - item selected:', itemId);
   }, []);
 
-  // Edit item - not fully supported in popup, just log
-  const handleEditItem = useCallback((_itemId: string) => {
-    // Edit functionality is only available in the full clipboard manager
-    console.log('Edit not available in popup - use main window');
+  // Edit item - open main window with edit dialog
+  const handleEditItem = useCallback(async (itemId: string) => {
+    await window.api.popup.openMainWithDialog('edit', itemId);
   }, []);
 
-  // AI Modify - not fully supported in popup, just log
-  const handleAIModify = useCallback((_itemId: string) => {
-    // AI modify functionality is only available in the full clipboard manager
-    console.log('AI modify not available in popup - use main window');
+  // AI Modify - open main window with AI prompt dialog
+  const handleAIModify = useCallback(async (itemId: string) => {
+    await window.api.popup.openMainWithDialog('ai-modify', itemId);
   }, []);
 
   // Keyboard shortcuts

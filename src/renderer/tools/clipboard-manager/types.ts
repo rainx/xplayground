@@ -119,6 +119,10 @@ declare global {
         onNavigate: (callback: (direction: 'left' | 'right' | 'up' | 'down') => void) => () => void;
         onSelect: (callback: () => void) => () => void;
         setFocusable: (focusable: boolean) => Promise<{ success: boolean }>;
+        openMainWithDialog: (dialogType: 'edit' | 'ai-modify', itemId: string) => Promise<{ success: boolean }>;
+      };
+      mainWindow: {
+        onOpenDialog: (callback: (dialogType: 'edit' | 'ai-modify', itemId: string) => void) => () => void;
       };
       shell: {
         openExternal: (url: string) => Promise<{ success: boolean }>;

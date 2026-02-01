@@ -6,6 +6,7 @@ import { ipcMain, BrowserWindow, shell } from 'electron';
 import { exec } from 'child_process';
 import { ClipboardService } from './index';
 import { CategoryStorage } from './category-storage';
+import { getAIService } from './ai-service';
 import type { SearchFilter, ClipboardManagerSettings, CategoryCreateInput, CategoryUpdateInput } from './types';
 
 let categoryStorage: CategoryStorage | null = null;
@@ -42,6 +43,15 @@ export function registerClipboardHandlers(
     }
   });
 
+  service.on('item-updated', (item) => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('clipboard:item-updated', item);
+    }
+    if (popupWindowRef && !popupWindowRef.isDestroyed()) {
+      popupWindowRef.webContents.send('clipboard:item-updated', item);
+    }
+  });
+
   // History operations
   ipcMain.handle('clipboard:get-history', async (_event, options?: { limit?: number; offset?: number }) => {
     return service.getHistory(options);
@@ -54,6 +64,10 @@ export function registerClipboardHandlers(
   ipcMain.handle('clipboard:delete-item', async (_event, id: string) => {
     const deleted = await service.deleteItem(id);
     return { success: deleted };
+  });
+
+  ipcMain.handle('clipboard:update-item', async (_event, id: string, updates: Partial<import('./types').ClipboardItem>) => {
+    return service.updateItem(id, updates);
   });
 
   ipcMain.handle('clipboard:paste-item', async (_event, id: string, options?: { hideWindow?: boolean; simulatePaste?: boolean }) => {
@@ -244,6 +258,41 @@ export function registerClipboardHandlers(
     }
     return { success: false, data: null };
   });
+
+  // AI text modification
+  ipcMain.handle('clipboard:ai-modify', async (_event, itemId: string, instruction: string) => {
+    try {
+      const item = await service.getItem(itemId);
+      if (!item || !item.textContent) {
+        return { success: false, error: 'Item not found or has no text content' };
+      }
+
+      const settings = service.getSettings();
+      if (!settings.aiSettings?.apiKey) {
+        return { success: false, error: 'AI settings not configured. Please set your API key in settings.' };
+      }
+
+      const aiService = getAIService();
+      aiService.setSettings(settings.aiSettings);
+
+      const modifiedText = await aiService.modifyText(item.textContent.plainText, instruction);
+
+      // Update the item with modified text
+      const updatedItem = await service.updateItem(itemId, {
+        textContent: {
+          ...item.textContent,
+          plainText: modifiedText,
+          characterCount: modifiedText.length,
+          lineCount: modifiedText.split('\n').length,
+        },
+      });
+
+      return { success: true, item: updatedItem };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'AI modification failed';
+      return { success: false, error: errorMessage };
+    }
+  });
 }
 
 export function registerWindowHandlers(mainWindow: BrowserWindow, popupWindow?: BrowserWindow | null): void {
@@ -301,6 +350,7 @@ export function unregisterClipboardHandlers(): void {
   ipcMain.removeHandler('clipboard:get-history');
   ipcMain.removeHandler('clipboard:get-item');
   ipcMain.removeHandler('clipboard:delete-item');
+  ipcMain.removeHandler('clipboard:update-item');
   ipcMain.removeHandler('clipboard:paste-item');
   ipcMain.removeHandler('clipboard:search');
   ipcMain.removeHandler('clipboard:get-settings');
@@ -319,4 +369,5 @@ export function unregisterClipboardHandlers(): void {
   ipcMain.removeHandler('clipboard:get-items-by-category');
   ipcMain.removeHandler('clipboard:duplicate-item');
   ipcMain.removeHandler('clipboard:get-image-data');
+  ipcMain.removeHandler('clipboard:ai-modify');
 }

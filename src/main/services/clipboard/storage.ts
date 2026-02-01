@@ -475,6 +475,49 @@ export class ClipboardStorage {
     }
   }
 
+  async updateItem(id: string, updates: Partial<ClipboardItem>): Promise<ClipboardItem | null> {
+    const index = this.indexCache.findIndex((item) => item.id === id);
+    if (index === -1) return null;
+
+    const item = this.indexCache[index];
+
+    // Build updated item, preserving id and createdAt
+    const updatedItem: ClipboardItem = {
+      ...item,
+      ...updates,
+      id: item.id,
+      createdAt: item.createdAt,
+    };
+
+    // Recalculate text metadata if plainText was changed
+    if (updates.textContent?.plainText !== undefined) {
+      const newText = updates.textContent.plainText;
+      updatedItem.textContent = {
+        ...item.textContent,
+        ...updates.textContent,
+        plainText: newText,
+        characterCount: newText.length,
+        lineCount: newText.split('\n').length,
+      };
+      updatedItem.searchableText = newText;
+    }
+
+    // Update colorContent if type is color and text changed
+    if (updatedItem.type === 'color' && updates.textContent?.plainText !== undefined) {
+      const colorValue = updates.textContent.plainText.trim();
+      const displayValue = colorValue.startsWith('#') ? colorValue : `#${colorValue}`;
+      updatedItem.colorContent = {
+        hexValue: colorValue,
+        displayValue: displayValue.toUpperCase(),
+      };
+    }
+
+    this.indexCache[index] = updatedItem;
+    await this.saveIndex();
+    await this.updateItemFile(updatedItem);
+    return updatedItem;
+  }
+
   async duplicateItem(itemId: string): Promise<ClipboardItem | null> {
     const originalItem = this.indexCache.find((i) => i.id === itemId);
     if (!originalItem) return null;

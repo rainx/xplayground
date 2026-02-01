@@ -67,10 +67,17 @@ export interface ClipboardItem {
   pinboardIds: string[];
 }
 
+export interface AISettings {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+}
+
 export interface ClipboardManagerSettings {
   maxHistoryItems: number;
   retentionDays: number;
   iCloudSyncEnabled: boolean;
+  aiSettings?: AISettings;
 }
 
 // Category types

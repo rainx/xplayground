@@ -267,6 +267,17 @@ function hidePopup(): void {
 
 **IPC 通信**：通过 `webContents.send()` 将键盘事件发送到渲染进程处理。
 
+### 对话框 CSS 样式规范
+
+新增对话框时必须添加完整的 CSS 样式，避免样式不一致：
+
+1. **输入框选择器**：同时覆盖 `input[type="text"]` 和 `input[type="password"]`
+2. **对话框尺寸**：为每个对话框类定义 `width`/`max-width`（如 `.edit-dialog`, `.ai-settings-dialog`）
+3. **Header 按钮**：新增按钮需添加对应样式（如 `.settings-btn`），参考 `.refresh-btn` 模式
+4. **使用 CSS 变量**：`var(--bg-tertiary)`, `var(--border)`, `var(--text-primary)` 等确保主题一致
+
+样式文件位置：`src/renderer/tools/clipboard-manager/styles/clipboard-manager.css`
+
 ### 多窗口 IPC 广播
 
 当有多个窗口（主窗口 + 弹窗）时，需要将事件广播到所有窗口：

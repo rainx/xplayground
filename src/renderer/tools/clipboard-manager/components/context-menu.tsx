@@ -14,6 +14,8 @@ interface ContextMenuProps {
   onPasteAsPlainText: (itemId: string) => void;
   onCopy: (itemId: string) => void;
   onOpen: (itemId: string) => void;
+  onEdit: (itemId: string) => void;
+  onAIModify: (itemId: string) => void;
   onAssignCategory: (itemId: string, categoryId: string) => void;
   onRemoveCategory: (itemId: string, categoryId: string) => void;
   onDuplicate: (itemId: string) => void;
@@ -32,6 +34,8 @@ export function ContextMenu({
   onPasteAsPlainText,
   onCopy,
   onOpen,
+  onEdit,
+  onAIModify,
   onAssignCategory,
   onRemoveCategory,
   onDuplicate,
@@ -153,6 +157,27 @@ export function ContextMenu({
         <span className="context-menu-icon-left">⌘C</span>
         Copy
       </button>
+
+      {/* Edit Actions for text types */}
+      {(item.type === 'text' || item.type === 'rich_text' || item.type === 'color') && (
+        <>
+          <div className="context-menu-divider" />
+          <button
+            className="context-menu-item"
+            onClick={() => handleAction(onEdit)}
+          >
+            <span className="context-menu-icon-left">✏️</span>
+            Edit
+          </button>
+          <button
+            className="context-menu-item"
+            onClick={() => handleAction(onAIModify)}
+          >
+            <span className="context-menu-icon-left">🤖</span>
+            AI Modify
+          </button>
+        </>
+      )}
 
       <div className="context-menu-divider" />
 

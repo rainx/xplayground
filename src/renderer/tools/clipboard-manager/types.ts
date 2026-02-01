@@ -129,6 +129,7 @@ declare global {
         getHistory: (options?: { limit?: number; offset?: number }) => Promise<ClipboardHistoryResponse>;
         getItem: (id: string) => Promise<ClipboardItem | null>;
         deleteItem: (id: string) => Promise<{ success: boolean }>;
+        updateItem: (id: string, updates: Partial<ClipboardItem>) => Promise<ClipboardItem | null>;
         pasteItem: (id: string, options?: { hideWindow?: boolean; simulatePaste?: boolean }) => Promise<{ success: boolean }>;
         search: (filter: SearchFilter) => Promise<ClipboardItem[]>;
         getSettings: () => Promise<Record<string, unknown>>;
@@ -137,9 +138,11 @@ declare global {
         clearCategoryItems: (categoryId: string) => Promise<{ success: boolean; deletedCount: number }>;
         onItemAdded: (callback: (item: ClipboardItem) => void) => () => void;
         onItemDeleted: (callback: (id: string) => void) => () => void;
+        onItemUpdated: (callback: (item: ClipboardItem) => void) => () => void;
         onItemCategoryChanged: (callback: (data: { itemId: string; categoryIds: string[] }) => void) => () => void;
         duplicateItem: (id: string) => Promise<ClipboardItem | null>;
         getImageData: (imagePath: string) => Promise<{ success: boolean; data: string | null }>;
+        aiModify: (itemId: string, instruction: string) => Promise<{ success: boolean; item?: ClipboardItem; error?: string }>;
         categories: {
           getAll: () => Promise<Category[]>;
           create: (input: CategoryCreateInput) => Promise<Category>;

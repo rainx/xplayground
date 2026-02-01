@@ -290,6 +290,14 @@ export class ClipboardService extends EventEmitter {
     return deleted;
   }
 
+  async updateItem(id: string, updates: Partial<ClipboardItem>): Promise<ClipboardItem | null> {
+    const updatedItem = await this.storage.updateItem(id, updates);
+    if (updatedItem) {
+      this.emit('item-updated', updatedItem);
+    }
+    return updatedItem;
+  }
+
   async pasteItem(id: string): Promise<void> {
     const item = await this.storage.getItem(id);
     if (!item) return;

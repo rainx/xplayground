@@ -82,6 +82,9 @@ const api = {
     deleteItem: (id: string) =>
       ipcRenderer.invoke('clipboard:delete-item', id),
 
+    updateItem: (id: string, updates: Record<string, unknown>) =>
+      ipcRenderer.invoke('clipboard:update-item', id, updates),
+
     pasteItem: (id: string, options?: { hideWindow?: boolean; simulatePaste?: boolean }) =>
       ipcRenderer.invoke('clipboard:paste-item', id, options),
 
@@ -122,6 +125,14 @@ const api = {
       };
     },
 
+    onItemUpdated: (callback: (item: unknown) => void) => {
+      const handler = (_event: unknown, item: unknown) => callback(item);
+      ipcRenderer.on('clipboard:item-updated', handler);
+      return () => {
+        ipcRenderer.removeListener('clipboard:item-updated', handler);
+      };
+    },
+
     onItemCategoryChanged: (callback: (data: { itemId: string; categoryIds: string[] }) => void) => {
       const handler = (_event: unknown, data: { itemId: string; categoryIds: string[] }) => callback(data);
       ipcRenderer.on('clipboard:item-category-changed', handler);
@@ -137,6 +148,10 @@ const api = {
     // Get decrypted image data (for encrypted images)
     getImageData: (imagePath: string): Promise<{ success: boolean; data: string | null }> =>
       ipcRenderer.invoke('clipboard:get-image-data', imagePath),
+
+    // AI text modification
+    aiModify: (itemId: string, instruction: string): Promise<{ success: boolean; item?: unknown; error?: string }> =>
+      ipcRenderer.invoke('clipboard:ai-modify', itemId, instruction),
 
     // Category operations
     categories: {

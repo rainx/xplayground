@@ -149,6 +149,18 @@ export function ClipboardPopup(): JSX.Element {
     console.log('Preview functionality - item selected:', itemId);
   }, []);
 
+  // Edit item - not fully supported in popup, just log
+  const handleEditItem = useCallback((_itemId: string) => {
+    // Edit functionality is only available in the full clipboard manager
+    console.log('Edit not available in popup - use main window');
+  }, []);
+
+  // AI Modify - not fully supported in popup, just log
+  const handleAIModify = useCallback((_itemId: string) => {
+    // AI modify functionality is only available in the full clipboard manager
+    console.log('AI modify not available in popup - use main window');
+  }, []);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     selectedItemId: selectedId,
@@ -319,6 +331,8 @@ export function ClipboardPopup(): JSX.Element {
           onPasteAsPlainText={handlePasteAsPlainText}
           onCopy={handleCopyItem}
           onOpen={handleOpenItem}
+          onEdit={handleEditItem}
+          onAIModify={handleAIModify}
           onAssignCategory={assignItemToCategory}
           onRemoveCategory={removeItemFromCategory}
           onDuplicate={handleDuplicateItem}

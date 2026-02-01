@@ -10,6 +10,9 @@ import { CategorySidebar } from './components/category-sidebar';
 import { CategoryDialog } from './components/category-dialog';
 import { ConfirmDialog } from './components/confirm-dialog';
 import { ContextMenu } from './components/context-menu';
+import { EditDialog } from './components/edit-dialog';
+import { AISettingsDialog, AISettings } from './components/ai-settings-dialog';
+import { AIPromptDialog } from './components/ai-prompt-dialog';
 import { useClipboardHistory } from './hooks/use-clipboard-history';
 import { useSearch } from './hooks/use-search';
 import { useCategories } from './hooks/use-categories';
@@ -35,6 +38,12 @@ export function ClipboardManager(): JSX.Element {
     message: string;
     onConfirm: () => void;
   } | null>(null);
+  const [editDialogItem, setEditDialogItem] = useState<ClipboardItem | null>(null);
+  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false);
+  const [aiSettings, setAISettings] = useState<AISettings | null>(null);
+  const [aiPromptItem, setAIPromptItem] = useState<ClipboardItem | null>(null);
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
+  const [aiError, setAIError] = useState<string | null>(null);
 
   const {
     items,
@@ -73,6 +82,25 @@ export function ClipboardManager(): JSX.Element {
     });
     return unsubscribe;
   }, [refresh]);
+
+  // Subscribe to item updates
+  useEffect(() => {
+    const unsubscribe = window.api.clipboard.onItemUpdated(() => {
+      refresh();
+    });
+    return unsubscribe;
+  }, [refresh]);
+
+  // Load AI settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      const settings = await window.api.clipboard.getSettings();
+      if (settings.aiSettings) {
+        setAISettings(settings.aiSettings as AISettings);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Drag and drop
   const handleDropItemToCategory = useCallback(
@@ -131,6 +159,58 @@ export function ClipboardManager(): JSX.Element {
     setSelectedId(itemId);
     // TODO: Implement preview modal
     console.log('Preview functionality - item selected:', itemId);
+  }, []);
+
+  // Edit item
+  const handleEditItem = useCallback((itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (item) {
+      setEditDialogItem(item);
+    }
+  }, [items]);
+
+  // Save edited item
+  const handleSaveEditedItem = useCallback(async (itemId: string, newText: string) => {
+    await window.api.clipboard.updateItem(itemId, {
+      textContent: {
+        plainText: newText,
+        characterCount: newText.length,
+        lineCount: newText.split('\n').length,
+      },
+    });
+  }, []);
+
+  // AI Modify item - opens prompt dialog
+  const handleAIModify = useCallback((itemId: string) => {
+    const item = items.find((i) => i.id === itemId);
+    if (item) {
+      setAIError(null);
+      setAIPromptItem(item);
+    }
+  }, [items]);
+
+  // Submit AI modification
+  const handleAISubmit = useCallback(async (itemId: string, instruction: string) => {
+    setIsAIProcessing(true);
+    setAIError(null);
+    try {
+      const result = await window.api.clipboard.aiModify(itemId, instruction);
+      if (result.success) {
+        setAIPromptItem(null);
+      } else {
+        setAIError(result.error || 'AI modification failed');
+      }
+    } catch (error) {
+      setAIError(error instanceof Error ? error.message : 'AI modification failed');
+    } finally {
+      setIsAIProcessing(false);
+    }
+  }, []);
+
+  // Save AI settings
+  const handleSaveAISettings = useCallback(async (settings: AISettings) => {
+    await window.api.clipboard.updateSettings({ aiSettings: settings });
+    setAISettings(settings);
   }, []);
 
   // Keyboard shortcuts
@@ -322,6 +402,13 @@ export function ClipboardManager(): JSX.Element {
               isSearching={isSearching}
             />
             <button
+              className="settings-btn"
+              onClick={() => setIsAISettingsOpen(true)}
+              title="AI Settings"
+            >
+              ⚙️
+            </button>
+            <button
               className="clear-btn"
               onClick={handleClearClick}
               disabled={loading || displayItems.length === 0}
@@ -390,6 +477,8 @@ export function ClipboardManager(): JSX.Element {
           onPasteAsPlainText={handlePasteAsPlainText}
           onCopy={handleCopyItem}
           onOpen={handleOpenItem}
+          onEdit={handleEditItem}
+          onAIModify={handleAIModify}
           onAssignCategory={assignItemToCategory}
           onRemoveCategory={removeItemFromCategory}
           onDuplicate={handleDuplicateItem}
@@ -399,6 +488,13 @@ export function ClipboardManager(): JSX.Element {
           onClose={closeContextMenu}
         />
       )}
+
+      <EditDialog
+        isOpen={!!editDialogItem}
+        item={editDialogItem}
+        onSave={handleSaveEditedItem}
+        onClose={() => setEditDialogItem(null)}
+      />
 
       {confirmDialog && (
         <ConfirmDialog
@@ -411,6 +507,25 @@ export function ClipboardManager(): JSX.Element {
           onCancel={closeConfirmDialog}
         />
       )}
+
+      <AISettingsDialog
+        isOpen={isAISettingsOpen}
+        settings={aiSettings}
+        onSave={handleSaveAISettings}
+        onClose={() => setIsAISettingsOpen(false)}
+      />
+
+      <AIPromptDialog
+        isOpen={!!aiPromptItem}
+        item={aiPromptItem}
+        onSubmit={handleAISubmit}
+        onClose={() => {
+          setAIPromptItem(null);
+          setAIError(null);
+        }}
+        isProcessing={isAIProcessing}
+        error={aiError}
+      />
     </div>
   );
 }

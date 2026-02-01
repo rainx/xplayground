@@ -52,7 +52,7 @@ function createPopupWindow(): BrowserWindow {
 
   // Popup dimensions - nearly full screen width for more content
   const popupWidth = screenWidth - 40;
-  const popupHeight = 280;
+  const popupHeight = 320;
 
   // Position at bottom center of screen
   const x = Math.round((screenWidth - popupWidth) / 2);
@@ -114,7 +114,7 @@ function showPopupWindow(): void {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
   const popupWidth = screenWidth - 40;
-  const popupHeight = 280;
+  const popupHeight = 320;
   const x = Math.round((screenWidth - popupWidth) / 2);
   const y = screenHeight - popupHeight;
 

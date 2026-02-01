@@ -162,6 +162,35 @@ declare global {
           onDeleted: (callback: (id: string) => void) => () => void;
         };
       };
+      // Snap (Screenshot Beautification) APIs
+      snap: {
+        captureRegion: () => Promise<{
+          success: boolean;
+          imageData?: string;
+          width?: number;
+          height?: number;
+          error?: string;
+        }>;
+        captureWindow: () => Promise<{
+          success: boolean;
+          imageData?: string;
+          width?: number;
+          height?: number;
+          error?: string;
+        }>;
+        getClipboardImage: () => Promise<{
+          success: boolean;
+          imageData?: string;
+          width?: number;
+          height?: number;
+          error?: string;
+        }>;
+        copyToClipboard: (imageDataUrl: string) => Promise<{ success: boolean; error?: string }>;
+        saveToFile: (
+          imageDataUrl: string,
+          defaultFilename: string
+        ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+      };
     };
   }
 }

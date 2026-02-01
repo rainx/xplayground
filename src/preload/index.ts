@@ -224,6 +224,49 @@ const api = {
       },
     },
   },
+
+  // Snap (Screenshot Beautification) APIs
+  snap: {
+    // Capture screen region interactively
+    captureRegion: (): Promise<{
+      success: boolean;
+      imageData?: string;
+      width?: number;
+      height?: number;
+      error?: string;
+    }> => ipcRenderer.invoke('snap:capture-region'),
+
+    // Capture a specific window
+    captureWindow: (): Promise<{
+      success: boolean;
+      imageData?: string;
+      width?: number;
+      height?: number;
+      error?: string;
+    }> => ipcRenderer.invoke('snap:capture-window'),
+
+    // Get image from clipboard
+    getClipboardImage: (): Promise<{
+      success: boolean;
+      imageData?: string;
+      width?: number;
+      height?: number;
+      error?: string;
+    }> => ipcRenderer.invoke('snap:get-clipboard-image'),
+
+    // Copy processed image to clipboard
+    copyToClipboard: (
+      imageDataUrl: string
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('snap:copy-to-clipboard', imageDataUrl),
+
+    // Save image to file
+    saveToFile: (
+      imageDataUrl: string,
+      defaultFilename: string
+    ): Promise<{ success: boolean; filePath?: string; error?: string }> =>
+      ipcRenderer.invoke('snap:save-to-file', imageDataUrl, defaultFilename),
+  },
 };
 
 // Expose types for TypeScript

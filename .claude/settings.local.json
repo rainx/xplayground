@@ -31,7 +31,20 @@
       "Bash(npm run typecheck:*)",
       "Bash(npm run build:*)",
       "Bash(git status:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm test:*)",
+      "Bash(cat:*)",
+      "Bash(# Get list of image IDs referenced in index # Since index is encrypted, we need to check via the app or decode it # First, let''s see how many items are in the current encrypted index # by checking item files count ls \"\"/Users/rainx/Library/Application Support/xToolbox/clipboard/data/items/\"\"*/*.json)",
+      "Bash(# Get all image item IDs from file names \\(items are encrypted but file names contain IDs\\) # Then compare with actual image files # List all item file IDs ls \"\"/Users/rainx/Library/Application Support/xToolbox/clipboard/data/items/\"\"*/*.json)",
+      "Bash(xargs:*)",
+      "Bash(pnpm typecheck:main:*)",
+      "Bash(pnpm cli:*)",
+      "Bash(npx electron:*)",
+      "Bash(unzip:*)",
+      "Bash(git stash:*)",
+      "Bash(npm run type-check:*)"
     ]
   }
 }

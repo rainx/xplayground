@@ -2,6 +2,7 @@ import { Tool, ToolMetadata } from '@/shared/types';
 
 // Import tools
 import * as ClipboardManagerTool from './clipboard-manager';
+import * as SnapTool from './snap';
 
 class ToolRegistry {
   private tools: Map<string, Tool> = new Map();
@@ -25,4 +26,9 @@ export const toolRegistry = new ToolRegistry();
 toolRegistry.register({
   metadata: ClipboardManagerTool.metadata,
   Component: ClipboardManagerTool.Component,
+});
+
+toolRegistry.register({
+  metadata: SnapTool.metadata,
+  Component: SnapTool.Component,
 });

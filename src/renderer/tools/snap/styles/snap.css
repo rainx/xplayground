@@ -1,0 +1,426 @@
+/**
+ * Snap Tool - Styles
+ */
+
+.snap-tool {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* Toolbar */
+.snap-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.snap-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.snap-toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.snap-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.snap-btn:hover {
+  background: #3a3a3d;
+}
+
+.snap-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.snap-btn-primary:hover {
+  background: #1a86e0;
+}
+
+.snap-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.snap-btn-arrow {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Capture menu dropdown */
+.snap-capture-wrapper {
+  position: relative;
+}
+
+.snap-capture-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  z-index: 100;
+}
+
+.snap-capture-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.snap-capture-menu-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.snap-capture-menu-item:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.snap-capture-menu-icon {
+  font-size: 16px;
+  opacity: 0.8;
+}
+
+.snap-capture-menu-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* Main content area */
+.snap-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Canvas area */
+.snap-canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  background: var(--bg-primary);
+}
+
+/* Drop zone */
+.snap-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 600px;
+  padding: 64px;
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.snap-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(0, 120, 212, 0.1);
+}
+
+.snap-drop-zone-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.snap-drop-zone-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.snap-drop-zone-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.snap-drop-zone-hint kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+/* Preview canvas */
+.snap-preview-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.snap-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  overflow: hidden;
+  /* Background will be set dynamically */
+}
+
+.snap-preview-image-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Shadow and border-radius will be set dynamically */
+}
+
+.snap-preview-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  /* Border-radius will be set dynamically */
+}
+
+/* Sidebar controls */
+.snap-sidebar {
+  width: 280px;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.snap-control-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.snap-control-section:last-child {
+  border-bottom: none;
+}
+
+.snap-control-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+/* Background picker */
+.snap-gradient-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.snap-gradient-item {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.snap-gradient-item:hover {
+  transform: scale(1.05);
+}
+
+.snap-gradient-item.selected {
+  border-color: var(--accent);
+}
+
+.snap-gradient-transparent {
+  background-image:
+    linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0px;
+}
+
+/* Slider control */
+.snap-slider-control {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.snap-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.snap-slider-value {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.snap-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  outline: none;
+}
+
+.snap-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.snap-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+/* Toggle control */
+.snap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.snap-toggle-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+.snap-toggle-switch.active {
+  background: var(--accent);
+}
+
+.snap-toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.snap-toggle-switch.active::after {
+  transform: translateX(16px);
+}
+
+.snap-toggle-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* Aspect ratio picker */
+.snap-ratio-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.snap-ratio-btn {
+  padding: 6px 10px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.snap-ratio-btn:hover {
+  background: #3a3a3d;
+  color: var(--text-primary);
+}
+
+.snap-ratio-btn.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* Footer hints */
+.snap-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.snap-footer kbd {
+  display: inline-block;
+  padding: 2px 5px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 11px;
+}
+
+/* Shadow controls */
+.snap-shadow-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}

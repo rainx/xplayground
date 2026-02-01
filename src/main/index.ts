@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow, globalShortcut, screen } from 'electron';
 import { join } from 'path';
 import { getClipboardService } from './services/clipboard';
 import { registerClipboardHandlers, registerWindowHandlers } from './services/clipboard/handlers';
+import { getSnapService } from './services/snap';
+import { registerSnapHandlers } from './services/snap/handlers';
 import { getMigrationService } from './services/migration';
 import { getCryptoService } from './services/crypto';
 import { runCLI } from './cli/clipboard-cli';
@@ -231,6 +233,10 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
     // Register IPC handlers
     registerClipboardHandlers(clipboardService, window);
 
+    // Register Snap handlers
+    const snapService = getSnapService();
+    registerSnapHandlers(snapService, window);
+
     console.log('Clipboard service initialized');
   } catch (error) {
     console.error('Failed to initialize services:', error);
@@ -238,6 +244,10 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
     // This allows the app to work in a degraded state
     const clipboardService = getClipboardService();
     registerClipboardHandlers(clipboardService, window);
+
+    // Register Snap handlers in degraded state too
+    const snapService = getSnapService();
+    registerSnapHandlers(snapService, window);
   }
 }
 

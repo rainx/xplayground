@@ -210,6 +210,16 @@ export class ClipboardService extends EventEmitter {
         };
       }
 
+      // If it's a color, add color content
+      if (type === 'color') {
+        const colorValue = text.trim();
+        const displayValue = colorValue.startsWith('#') ? colorValue : `#${colorValue}`;
+        item.colorContent = {
+          hexValue: colorValue,
+          displayValue: displayValue.toUpperCase(),
+        };
+      }
+
       // Check for HTML
       const html = clipboard.readHTML();
       if (html) {
@@ -242,8 +252,9 @@ export class ClipboardService extends EventEmitter {
       return 'link';
     }
 
-    // Check if it's a hex color
-    if (/^#([0-9A-Fa-f]{3}){1,2}$/.test(trimmed)) {
+    // Check if it's a hex color (with or without # prefix)
+    // Matches: #RGB, #RRGGBB, RGB, RRGGBB
+    if (/^#?([0-9A-Fa-f]{3}){1,2}$/.test(trimmed)) {
       return 'color';
     }
 
@@ -287,6 +298,7 @@ export class ClipboardService extends EventEmitter {
       case 'text':
       case 'rich_text':
       case 'link':
+      case 'color':
         if (item.textContent) {
           clipboard.writeText(item.textContent.plainText);
         }

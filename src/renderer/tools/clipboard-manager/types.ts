@@ -45,6 +45,11 @@ export interface LinkContent {
   domain: string;
 }
 
+export interface ColorContent {
+  hexValue: string;  // e.g., "#F5AB82" or "F5AB82"
+  displayValue: string;  // Normalized display value with # prefix
+}
+
 export interface ClipboardItem {
   id: string;
   type: ClipboardContentType;
@@ -55,6 +60,7 @@ export interface ClipboardItem {
   imageContent?: ImageContent;
   fileContent?: FileContent;
   linkContent?: LinkContent;
+  colorContent?: ColorContent;
 
   searchableText: string;
   isPinned: boolean;

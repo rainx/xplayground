@@ -7,6 +7,34 @@ import type { ClipboardItem as ClipboardItemType, Category } from '../types';
 import { CategoryBadges } from './category-badge';
 import { ImagePreview } from './image-preview';
 
+/**
+ * Calculate relative luminance and determine if text should be light or dark
+ * Uses WCAG formula for relative luminance
+ */
+function getContrastTextColor(hexColor: string): string {
+  // Remove # if present and handle 3-digit hex
+  let hex = hexColor.replace('#', '');
+  if (hex.length === 3) {
+    hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+  }
+
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  // Convert to linear RGB
+  const toLinear = (c: number) => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  const rLin = toLinear(r);
+  const gLin = toLinear(g);
+  const bLin = toLinear(b);
+
+  // Calculate relative luminance
+  const luminance = 0.2126 * rLin + 0.7152 * gLin + 0.0722 * bLin;
+
+  // Return white for dark backgrounds, dark for light backgrounds
+  return luminance > 0.179 ? '#1a1a1a' : '#ffffff';
+}
+
 interface ClipboardItemProps {
   item: ClipboardItemType;
   isSelected: boolean;
@@ -139,6 +167,22 @@ export function ClipboardItem({
             )}
           </div>
         );
+
+      case 'color': {
+        const hexValue = item.colorContent?.displayValue || item.textContent?.plainText || '';
+        const textColor = getContrastTextColor(hexValue);
+        return (
+          <div
+            className="preview-color"
+            style={{
+              backgroundColor: hexValue,
+              color: textColor,
+            }}
+          >
+            <span className="color-hex">{hexValue.toUpperCase()}</span>
+          </div>
+        );
+      }
 
       default:
         return <div className="preview-unknown">Unknown content</div>;

@@ -320,6 +320,28 @@
   margin-top: 4px;
 }
 
+/* Color Preview */
+.preview-color {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 80px;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.color-hex {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.clipboard-item.type-color .item-type-icon {
+  color: #c678dd;
+}
+
 /* Item Actions */
 .item-actions {
   display: flex;

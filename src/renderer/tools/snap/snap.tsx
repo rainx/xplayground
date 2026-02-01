@@ -14,13 +14,20 @@ export function Snap(): JSX.Element {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [showCaptureMenu, setShowCaptureMenu] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const captureMenuRef = useRef<HTMLDivElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
-  // Close capture menu when clicking outside
+  // Close menus when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (captureMenuRef.current && !captureMenuRef.current.contains(e.target as Node)) {
         setShowCaptureMenu(false);
+      }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -67,27 +74,181 @@ export function Snap(): JSX.Element {
     }
   }, []);
 
-  // Handle paste from clipboard
-  useEffect(() => {
-    const handlePaste = async (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
+  // Get background CSS - must be defined before renderToCanvas
+  const getBackgroundCSS = useCallback(() => {
+    const { background } = settings;
+    if (background.type === 'transparent') {
+      return 'transparent';
+    }
+    if (background.type === 'solid') {
+      return background.solidColor || '#ffffff';
+    }
+    if (background.type === 'gradient' && background.gradientId) {
+      const gradient = getGradientById(background.gradientId);
+      if (gradient) {
+        return gradientToCSS(gradient);
+      }
+    }
+    return '#667eea';
+  }, [settings.background]);
 
-      for (const item of items) {
-        if (item.type.startsWith('image/')) {
-          e.preventDefault();
-          const blob = item.getAsFile();
-          if (blob) {
-            await loadImageFromBlob(blob);
-          }
-          break;
+  // Render preview to canvas and return data URL
+  const renderToCanvas = useCallback(async (): Promise<string | null> => {
+    if (!image || !previewRef.current) return null;
+
+    // Get the preview element dimensions
+    const previewElement = previewRef.current;
+    const rect = previewElement.getBoundingClientRect();
+
+    // Create canvas with the same dimensions
+    const canvas = document.createElement('canvas');
+    const scale = 2; // Render at 2x for better quality
+    canvas.width = rect.width * scale;
+    canvas.height = rect.height * scale;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.scale(scale, scale);
+
+    // Draw background
+    const bgCSS = getBackgroundCSS();
+    if (bgCSS === 'transparent') {
+      // Keep transparent
+    } else if (bgCSS.includes('gradient')) {
+      // Parse and draw gradient
+      const gradient = settings.background.gradientId
+        ? getGradientById(settings.background.gradientId)
+        : null;
+      if (gradient) {
+        const angle = gradient.angle * Math.PI / 180;
+        const x1 = rect.width / 2 - Math.cos(angle) * rect.width / 2;
+        const y1 = rect.height / 2 - Math.sin(angle) * rect.height / 2;
+        const x2 = rect.width / 2 + Math.cos(angle) * rect.width / 2;
+        const y2 = rect.height / 2 + Math.sin(angle) * rect.height / 2;
+
+        const linearGradient = ctx.createLinearGradient(x1, y1, x2, y2);
+        gradient.colors.forEach((color, i) => {
+          linearGradient.addColorStop(i / (gradient.colors.length - 1), color);
+        });
+        ctx.fillStyle = linearGradient;
+        ctx.fillRect(0, 0, rect.width, rect.height);
+      }
+    } else {
+      // Solid color
+      ctx.fillStyle = bgCSS;
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    }
+
+    // Calculate padding
+    const padding = settings.padding.mode === 'uniform'
+      ? settings.padding.uniform
+      : settings.padding.top; // Simplified for uniform padding
+
+    // Load the image
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    return new Promise((resolve) => {
+      img.onload = () => {
+        // Calculate image dimensions to fit within preview
+        const maxWidth = 800;
+        const maxHeight = 600;
+        let imgWidth = img.width;
+        let imgHeight = img.height;
+
+        if (imgWidth > maxWidth) {
+          imgHeight = (maxWidth / imgWidth) * imgHeight;
+          imgWidth = maxWidth;
+        }
+        if (imgHeight > maxHeight) {
+          imgWidth = (maxHeight / imgHeight) * imgWidth;
+          imgHeight = maxHeight;
+        }
+
+        // Calculate position (centered)
+        const x = padding;
+        const y = padding;
+
+        // Draw shadow if enabled
+        if (settings.shadow.enabled) {
+          ctx.save();
+          ctx.shadowColor = `rgba(0, 0, 0, ${settings.shadow.opacity / 100})`;
+          ctx.shadowBlur = settings.shadow.blur;
+          ctx.shadowOffsetX = settings.shadow.offsetX;
+          ctx.shadowOffsetY = settings.shadow.offsetY;
+
+          // Draw a rounded rect for shadow
+          ctx.beginPath();
+          ctx.roundRect(x, y, imgWidth, imgHeight, settings.cornerRadius);
+          ctx.fillStyle = '#fff';
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Clip to rounded rect for image
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(x, y, imgWidth, imgHeight, settings.cornerRadius);
+        ctx.clip();
+
+        // Draw image
+        ctx.drawImage(img, x, y, imgWidth, imgHeight);
+        ctx.restore();
+
+        // Return data URL
+        resolve(canvas.toDataURL('image/png'));
+      };
+
+      img.onerror = () => resolve(null);
+      img.src = image.dataUrl;
+    });
+  }, [image, settings, getBackgroundCSS]);
+
+  // Copy processed image to clipboard
+  const handleCopyToClipboard = useCallback(async () => {
+    if (!image) return;
+
+    setShowExportMenu(false);
+    setIsExporting(true);
+
+    try {
+      const dataUrl = await renderToCanvas();
+      if (dataUrl) {
+        const result = await window.api.snap.copyToClipboard(dataUrl);
+        if (result.success) {
+          console.log('Image copied to clipboard');
+        } else {
+          console.error('Failed to copy:', result.error);
         }
       }
-    };
+    } finally {
+      setIsExporting(false);
+    }
+  }, [image, renderToCanvas]);
 
-    document.addEventListener('paste', handlePaste);
-    return () => document.removeEventListener('paste', handlePaste);
-  }, []);
+  // Save processed image to file
+  const handleSaveToFile = useCallback(async () => {
+    if (!image) return;
+
+    setShowExportMenu(false);
+    setIsExporting(true);
+
+    try {
+      const dataUrl = await renderToCanvas();
+      if (dataUrl) {
+        const filename = `snap-${new Date().toISOString().slice(0, 10)}.png`;
+        const result = await window.api.snap.saveToFile(dataUrl, filename);
+        if (result.success) {
+          console.log('Image saved to:', result.filePath);
+        } else if (result.error !== 'Save cancelled') {
+          console.error('Failed to save:', result.error);
+        }
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  }, [image, renderToCanvas]);
 
   // Load image from blob
   const loadImageFromBlob = useCallback(async (blob: Blob) => {
@@ -108,6 +269,54 @@ export function Snap(): JSX.Element {
     };
     reader.readAsDataURL(blob);
   }, []);
+
+  // Handle paste from clipboard
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (blob) {
+            await loadImageFromBlob(blob);
+          }
+          break;
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [loadImageFromBlob]);
+
+  // Keyboard shortcuts (Cmd+C to copy, Cmd+S to save)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!image) return;
+
+      // Cmd+C / Ctrl+C - Copy to clipboard
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+        // Only handle if no text is selected
+        const selection = window.getSelection();
+        if (!selection || selection.toString().length === 0) {
+          e.preventDefault();
+          handleCopyToClipboard();
+        }
+      }
+
+      // Cmd+S / Ctrl+S - Save to file
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        handleSaveToFile();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [image, handleCopyToClipboard, handleSaveToFile]);
 
   // Handle drag and drop
   const handleDragOver = useCallback((e: DragEvent) => {
@@ -140,24 +349,6 @@ export function Snap(): JSX.Element {
   ) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   }, []);
-
-  // Get background CSS
-  const getBackgroundCSS = useCallback(() => {
-    const { background } = settings;
-    if (background.type === 'transparent') {
-      return 'transparent';
-    }
-    if (background.type === 'solid') {
-      return background.solidColor || '#ffffff';
-    }
-    if (background.type === 'gradient' && background.gradientId) {
-      const gradient = getGradientById(background.gradientId);
-      if (gradient) {
-        return gradientToCSS(gradient);
-      }
-    }
-    return '#667eea';
-  }, [settings.background]);
 
   // Get shadow CSS
   const getShadowCSS = useCallback(() => {
@@ -211,9 +402,31 @@ export function Snap(): JSX.Element {
           </button>
         </div>
         <div className="snap-toolbar-right">
-          <button className="snap-btn snap-btn-primary" disabled={!image}>
-            <span>Export</span>
-          </button>
+          <div className="snap-export-wrapper" ref={exportMenuRef}>
+            <button
+              className="snap-btn snap-btn-primary"
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={!image || isExporting}
+              title="Export image"
+            >
+              <span>{isExporting ? 'Exporting...' : 'Export'}</span>
+              <span className="snap-btn-arrow">▼</span>
+            </button>
+            {showExportMenu && (
+              <div className="snap-export-menu">
+                <button className="snap-export-menu-item" onClick={handleCopyToClipboard}>
+                  <span className="snap-export-menu-icon">📋</span>
+                  <span>Copy to Clipboard</span>
+                  <span className="snap-export-menu-hint">⌘C</span>
+                </button>
+                <button className="snap-export-menu-item" onClick={handleSaveToFile}>
+                  <span className="snap-export-menu-icon">💾</span>
+                  <span>Save to File</span>
+                  <span className="snap-export-menu-hint">⌘S</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -237,6 +450,7 @@ export function Snap(): JSX.Element {
           ) : (
             <div className="snap-preview-wrapper">
               <div
+                ref={previewRef}
                 className="snap-preview"
                 style={{
                   background: getBackgroundCSS(),

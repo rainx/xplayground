@@ -4,6 +4,11 @@ import { getClipboardService } from './services/clipboard';
 import { registerClipboardHandlers, registerWindowHandlers } from './services/clipboard/handlers';
 import { getMigrationService } from './services/migration';
 import { getCryptoService } from './services/crypto';
+import { runCLI } from './cli/clipboard-cli';
+
+// Check if running in CLI mode
+const cliIndex = process.argv.findIndex((arg) => arg === '--cli');
+const isCliMode = cliIndex !== -1;
 
 let mainWindow: BrowserWindow | null = null;
 let popupWindow: BrowserWindow | null = null;
@@ -253,6 +258,26 @@ function registerGlobalShortcuts(): void {
 }
 
 app.whenReady().then(async () => {
+  // CLI mode: run command and exit
+  if (isCliMode) {
+    try {
+      // Initialize crypto service for CLI
+      const cryptoService = getCryptoService();
+      await cryptoService.initialize();
+
+      // Get CLI arguments after --cli
+      const cliArgs = process.argv.slice(cliIndex + 1);
+      await runCLI(cliArgs);
+    } catch (error) {
+      console.error(JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+    app.quit();
+    return;
+  }
+
   // Set app name for development mode (otherwise shows "Electron")
   if (!app.isPackaged) {
     app.setName('xToolbox');

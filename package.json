@@ -20,7 +20,8 @@
     "test:watch": "vitest",
     "test:unit": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "package": "electron-builder --mac --config"
+    "package": "electron-builder --mac --config",
+    "cli": "electron . --cli"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.0",
@@ -36,7 +37,7 @@
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.1.0",
-    "electron": "28",
+    "electron": "^28.3.3",
     "electron-builder": "^24.9.1",
     "electron-vite": "^2.0.0",
     "eslint": "^8.55.0",

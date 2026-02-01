@@ -43,7 +43,7 @@ importers:
         specifier: ^1.1.0
         version: 1.6.1(vitest@1.6.1(@types/node@20.19.30)(jsdom@23.2.0))
       electron:
-        specifier: '28'
+        specifier: ^28.3.3
         version: 28.3.3
       electron-builder:
         specifier: ^24.9.1

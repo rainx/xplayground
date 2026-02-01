@@ -59,9 +59,11 @@ export class ClipboardService extends EventEmitter {
     try {
       // Use Electron's clipboard API for now
       // When native module is ready, we'll switch to it
-      const item = await this.readClipboardElectron();
+      const result = await this.readClipboardElectron();
 
-      if (item) {
+      if (result) {
+        const { item, pendingImageData } = result;
+
         // Check if this is the same as last seen content (prevents re-adding after deletion)
         if (this.lastSeenContent && this.isSameContent(this.lastSeenContent, item)) {
           return;
@@ -77,6 +79,17 @@ export class ClipboardService extends EventEmitter {
           if (this.isSameContent(historyItem, item)) {
             return;
           }
+        }
+
+        // Now save image if pending (only after dedup check passes)
+        if (pendingImageData && item.imageContent) {
+          const { originalPath, thumbnailPath } = await this.storage.saveImageAsset(
+            item.id,
+            pendingImageData,
+            'png'
+          );
+          item.imageContent.originalPath = originalPath;
+          item.imageContent.thumbnailPath = thumbnailPath;
         }
 
         // Save and emit
@@ -115,7 +128,10 @@ export class ClipboardService extends EventEmitter {
     }
   }
 
-  private async readClipboardElectron(): Promise<ClipboardItem | null> {
+  private async readClipboardElectron(): Promise<{
+    item: ClipboardItem;
+    pendingImageData?: Buffer;
+  } | null> {
     const formats = clipboard.availableFormats();
 
     if (formats.length === 0) {
@@ -142,21 +158,15 @@ export class ClipboardService extends EventEmitter {
         return null;
       }
 
-      // Save image asset
-      const { originalPath, thumbnailPath } = await this.storage.saveImageAsset(
-        id,
-        pngBuffer,
-        'png'
-      );
-
-      return {
+      // Don't save image yet - return pending data for dedup check first
+      const item: ClipboardItem = {
         id,
         type: 'image',
         createdAt,
         sourceApp: null,
         imageContent: {
-          originalPath,
-          thumbnailPath,
+          originalPath: '', // Will be set after dedup check
+          thumbnailPath: '', // Will be set after dedup check
           width: size.width,
           height: size.height,
           format: 'png',
@@ -166,6 +176,8 @@ export class ClipboardService extends EventEmitter {
         isPinned: false,
         pinboardIds: [],
       };
+
+      return { item, pendingImageData: pngBuffer };
     }
 
     // Check for text
@@ -216,7 +228,7 @@ export class ClipboardService extends EventEmitter {
         }
       }
 
-      return item;
+      return { item };
     }
 
     return null;
@@ -349,7 +361,7 @@ export class ClipboardService extends EventEmitter {
     // Any content copied before clear should not be captured again
     const currentClipboard = await this.readClipboardElectron();
     if (currentClipboard) {
-      this.lastSeenContent = currentClipboard;
+      this.lastSeenContent = currentClipboard.item;
     }
     return deletedIds;
   }
@@ -364,7 +376,7 @@ export class ClipboardService extends EventEmitter {
     // Any content copied before clear should not be captured again
     const currentClipboard = await this.readClipboardElectron();
     if (currentClipboard) {
-      this.lastSeenContent = currentClipboard;
+      this.lastSeenContent = currentClipboard.item;
     }
     return deletedIds;
   }

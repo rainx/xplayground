@@ -18,7 +18,7 @@ interface AISettingsDialogProps {
 }
 
 const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
-const DEFAULT_MODEL = 'gpt-4o-mini';
+const DEFAULT_MODEL = 'openai/gpt-5.2-chat';
 
 export function AISettingsDialog({
   isOpen,

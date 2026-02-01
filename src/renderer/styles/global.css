@@ -120,3 +120,35 @@ body {
   padding: 24px;
   overflow-y: auto;
 }
+
+/* Sidebar footer */
+.sidebar-footer {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  -webkit-app-region: no-drag;
+}
+
+.settings-btn {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-btn:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.settings-btn svg {
+  flex-shrink: 0;
+}

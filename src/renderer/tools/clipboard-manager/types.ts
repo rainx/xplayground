@@ -190,6 +190,36 @@ declare global {
           imageDataUrl: string,
           defaultFilename: string
         ) => Promise<{ success: boolean; filePath?: string; error?: string }>;
+        onCaptured: (
+          callback: (result: {
+            success: boolean;
+            imageData?: string;
+            width?: number;
+            height?: number;
+            error?: string;
+          }) => void
+        ) => () => void;
+      };
+      // Keyboard Shortcuts APIs
+      shortcuts: {
+        getAll: () => Promise<{
+          definitions: Array<{
+            id: string;
+            label: string;
+            description: string;
+            defaultShortcut: string;
+            category: string;
+          }>;
+          bindings: Array<{
+            action: string;
+            shortcut: string;
+            enabled: boolean;
+            lastError?: string;
+          }>;
+        }>;
+        updateBinding: (action: string, newShortcut: string) => Promise<{ success: boolean; error?: string }>;
+        resetToDefault: (action: string) => Promise<{ success: boolean; error?: string }>;
+        resetAll: () => Promise<Array<{ action: string; success: boolean; error?: string }>>;
       };
     };
   }

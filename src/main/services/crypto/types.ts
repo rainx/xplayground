@@ -25,7 +25,8 @@ export type KeyPurpose =
   | 'item' // individual clipboard items
   | 'image' // image assets
   | 'settings' // settings.json
-  | 'category'; // categories.json
+  | 'category' // categories.json
+  | 'shortcuts'; // keyboard shortcuts settings
 
 /** Migration state tracking */
 export interface MigrationState {

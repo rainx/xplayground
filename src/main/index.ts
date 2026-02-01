@@ -6,6 +6,8 @@ import { getSnapService } from './services/snap';
 import { registerSnapHandlers } from './services/snap/handlers';
 import { getMigrationService } from './services/migration';
 import { getCryptoService } from './services/crypto';
+import { getShortcutService } from './services/shortcuts';
+import { registerShortcutHandlers } from './services/shortcuts/handlers';
 import { runCLI } from './cli/clipboard-cli';
 
 // Check if running in CLI mode
@@ -210,6 +212,55 @@ function togglePopupWindow(): void {
   }
 }
 
+// Snap capture handlers for global shortcuts
+async function handleSnapCaptureRegion(): Promise<void> {
+  const snapService = getSnapService();
+
+  // Hide main window before capture to avoid self-capture
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+    mainWindow.hide();
+  }
+
+  try {
+    const result = await snapService.captureRegion();
+
+    // Show main window and send captured result
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.webContents.send('snap:captured', result);
+    }
+  } catch (error) {
+    console.error('Snap capture region error:', error);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  }
+}
+
+async function handleSnapCaptureWindow(): Promise<void> {
+  const snapService = getSnapService();
+
+  // Hide main window before capture
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+    mainWindow.hide();
+  }
+
+  try {
+    const result = await snapService.captureWindow();
+
+    // Show main window and send captured result
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+      mainWindow.webContents.send('snap:captured', result);
+    }
+  } catch (error) {
+    console.error('Snap capture window error:', error);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  }
+}
+
 async function initializeServices(window: BrowserWindow): Promise<void> {
   try {
     // Initialize crypto service first
@@ -237,7 +288,22 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
     const snapService = getSnapService();
     registerSnapHandlers(snapService, window);
 
-    console.log('Clipboard service initialized');
+    // Initialize shortcut service
+    const shortcutService = getShortcutService();
+    await shortcutService.initialize();
+
+    // Register action handlers for shortcuts
+    shortcutService.registerHandler('clipboard:toggle-popup', togglePopupWindow);
+    shortcutService.registerHandler('snap:capture-region', handleSnapCaptureRegion);
+    shortcutService.registerHandler('snap:capture-window', handleSnapCaptureWindow);
+
+    // Register all shortcuts from settings
+    shortcutService.registerAllShortcuts();
+
+    // Register shortcut IPC handlers
+    registerShortcutHandlers(shortcutService);
+
+    console.log('All services initialized');
   } catch (error) {
     console.error('Failed to initialize services:', error);
     // Still register handlers even if initialization fails
@@ -248,24 +314,22 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
     // Register Snap handlers in degraded state too
     const snapService = getSnapService();
     registerSnapHandlers(snapService, window);
+
+    // Try to initialize shortcut service in degraded state
+    try {
+      const shortcutService = getShortcutService();
+      await shortcutService.initialize();
+      shortcutService.registerHandler('clipboard:toggle-popup', togglePopupWindow);
+      shortcutService.registerHandler('snap:capture-region', handleSnapCaptureRegion);
+      shortcutService.registerHandler('snap:capture-window', handleSnapCaptureWindow);
+      shortcutService.registerAllShortcuts();
+      registerShortcutHandlers(shortcutService);
+    } catch (shortcutError) {
+      console.error('Failed to initialize shortcut service:', shortcutError);
+    }
   }
 }
 
-function registerGlobalShortcuts(): void {
-  // Register global shortcut to show/toggle clipboard popup
-  // Default: Option+Command+V (macOS) or Alt+Ctrl+V (Windows/Linux)
-  const shortcut = process.platform === 'darwin' ? 'Alt+Command+V' : 'Alt+Control+V';
-
-  const registered = globalShortcut.register(shortcut, () => {
-    togglePopupWindow();
-  });
-
-  if (!registered) {
-    console.warn(`Failed to register global shortcut: ${shortcut}`);
-  } else {
-    console.log(`Global shortcut registered: ${shortcut}`);
-  }
-}
 
 app.whenReady().then(async () => {
   // CLI mode: run command and exit
@@ -312,9 +376,6 @@ app.whenReady().then(async () => {
   // Create popup window (hidden initially)
   createPopupWindow();
 
-  // Register global shortcuts
-  registerGlobalShortcuts();
-
   // Register window-related IPC handlers for both windows
   registerWindowHandlers(window, popupWindow);
 
@@ -323,7 +384,6 @@ app.whenReady().then(async () => {
       const newWindow = createWindow();
       initializeServices(newWindow);
       createPopupWindow();
-      registerGlobalShortcuts();
       registerWindowHandlers(newWindow, popupWindow);
     }
   });

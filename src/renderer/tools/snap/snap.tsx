@@ -34,6 +34,23 @@ export function Snap(): JSX.Element {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Listen for captures from global keyboard shortcut
+  useEffect(() => {
+    const unsubscribe = window.api.snap.onCaptured((result) => {
+      if (result.success && result.imageData) {
+        setImage({
+          id: crypto.randomUUID(),
+          dataUrl: result.imageData,
+          width: result.width || 0,
+          height: result.height || 0,
+          name: 'Screenshot',
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // Capture region screenshot
   const handleCaptureRegion = useCallback(async () => {
     setShowCaptureMenu(false);

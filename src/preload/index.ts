@@ -266,6 +266,70 @@ const api = {
       defaultFilename: string
     ): Promise<{ success: boolean; filePath?: string; error?: string }> =>
       ipcRenderer.invoke('snap:save-to-file', imageDataUrl, defaultFilename),
+
+    // Listen for captures from global shortcut
+    onCaptured: (
+      callback: (result: {
+        success: boolean;
+        imageData?: string;
+        width?: number;
+        height?: number;
+        error?: string;
+      }) => void
+    ) => {
+      const handler = (
+        _event: unknown,
+        result: {
+          success: boolean;
+          imageData?: string;
+          width?: number;
+          height?: number;
+          error?: string;
+        }
+      ) => callback(result);
+      ipcRenderer.on('snap:captured', handler);
+      return () => {
+        ipcRenderer.removeListener('snap:captured', handler);
+      };
+    },
+  },
+
+  // Keyboard Shortcuts APIs
+  shortcuts: {
+    // Get all shortcut definitions and current bindings
+    getAll: (): Promise<{
+      definitions: Array<{
+        id: string;
+        label: string;
+        description: string;
+        defaultShortcut: string;
+        category: string;
+      }>;
+      bindings: Array<{
+        action: string;
+        shortcut: string;
+        enabled: boolean;
+        lastError?: string;
+      }>;
+    }> => ipcRenderer.invoke('shortcuts:get-all'),
+
+    // Update a shortcut binding
+    updateBinding: (
+      action: string,
+      newShortcut: string
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('shortcuts:update-binding', action, newShortcut),
+
+    // Reset a shortcut to default
+    resetToDefault: (
+      action: string
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('shortcuts:reset-to-default', action),
+
+    // Reset all shortcuts to defaults
+    resetAll: (): Promise<
+      Array<{ action: string; success: boolean; error?: string }>
+    > => ipcRenderer.invoke('shortcuts:reset-all'),
   },
 };
 

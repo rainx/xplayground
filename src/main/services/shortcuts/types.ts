@@ -39,7 +39,7 @@ export const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     id: 'snap:capture-region',
     label: 'Capture Screen Region',
     description: 'Start interactive region capture for screenshot',
-    defaultShortcut: 'Alt+Shift+A',
+    defaultShortcut: process.platform === 'darwin' ? 'Alt+Command+A' : 'Alt+Control+A',
     category: 'snap',
   },
   {

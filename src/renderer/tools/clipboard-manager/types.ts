@@ -114,6 +114,9 @@ declare global {
       window: {
         show: () => Promise<{ success: boolean }>;
         hide: () => Promise<{ success: boolean }>;
+        toggleMaximize: () => Promise<{ success: boolean; isMaximized?: boolean }>;
+        isMaximized: () => Promise<{ isMaximized: boolean }>;
+        onMaximizeChanged: (callback: (isMaximized: boolean) => void) => () => void;
       };
       popup: {
         onNavigate: (callback: (direction: 'left' | 'right' | 'up' | 'down') => void) => () => void;

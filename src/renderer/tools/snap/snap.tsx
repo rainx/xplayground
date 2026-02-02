@@ -18,28 +18,48 @@ export function Snap(): JSX.Element {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [zoom, setZoom] = useState(100); // Zoom percentage (100 = fit to view)
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 }); // Track canvas size for recalculation
   const captureMenuRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
 
+  // Helper to get actual image dimensions from data URL
+  // This is needed because nativeImage.getSize() returns CSS logical pixels,
+  // but the actual image data may be at device pixel resolution (e.g., 2x on Retina)
+  const getActualImageDimensions = useCallback((dataUrl: string): Promise<{ width: number; height: number }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        // Fallback to 0x0 on error
+        resolve({ width: 0, height: 0 });
+      };
+      img.src = dataUrl;
+    });
+  }, []);
+
   // Helper to set image with background color detection
   const setImageWithColorDetection = useCallback(async (
     dataUrl: string,
-    width: number,
-    height: number,
+    _width: number, // Ignored - we get actual dimensions from the image
+    _height: number, // Ignored - we get actual dimensions from the image
     name: string = 'Screenshot'
   ) => {
+    // Get actual image dimensions (not CSS logical pixels)
+    const { width: actualWidth, height: actualHeight } = await getActualImageDimensions(dataUrl);
     const detectedBgColor = await detectBackgroundColorFromDataUrl(dataUrl);
     setImage({
       id: crypto.randomUUID(),
       dataUrl,
-      width,
-      height,
+      width: actualWidth,
+      height: actualHeight,
       name,
       detectedBgColor,
     });
-  }, []);
+  }, [getActualImageDimensions]);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -53,6 +73,25 @@ export function Snap(): JSX.Element {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Track canvas area size changes to recalculate preview scale
+  useEffect(() => {
+    const canvasArea = canvasAreaRef.current;
+    if (!canvasArea) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setCanvasSize({ width, height });
+      }
+    });
+
+    resizeObserver.observe(canvasArea);
+    // Set initial size
+    setCanvasSize({ width: canvasArea.clientWidth, height: canvasArea.clientHeight });
+
+    return () => resizeObserver.disconnect();
   }, []);
 
   // Listen for captures from global keyboard shortcut
@@ -391,11 +430,11 @@ export function Snap(): JSX.Element {
 
   // Calculate preview scale to fit in available space
   const getPreviewScale = useCallback(() => {
-    if (!image || !canvasAreaRef.current) return 1;
+    if (!image || canvasSize.width === 0 || canvasSize.height === 0) return 1;
 
-    const canvasArea = canvasAreaRef.current;
-    const availableWidth = canvasArea.clientWidth - 48; // Account for padding
-    const availableHeight = canvasArea.clientHeight - 48;
+    // Use tracked canvas size (updates on resize)
+    const availableWidth = canvasSize.width - 48; // Account for padding
+    const availableHeight = canvasSize.height - 48;
 
     // Calculate full rendered size (padding + inset + image)
     const padding = settings.padding.mode === 'uniform' ? settings.padding.uniform : settings.padding.top;
@@ -403,14 +442,15 @@ export function Snap(): JSX.Element {
     const fullWidth = image.width + (padding + inset) * 2;
     const fullHeight = image.height + (padding + inset) * 2;
 
-    // Calculate scale to fit
+    // Calculate scale to fit content in available space
+    // Allow scaling up or down to fill the canvas area
     const scaleX = availableWidth / fullWidth;
     const scaleY = availableHeight / fullHeight;
-    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+    const fitScale = Math.min(scaleX, scaleY);
 
-    // Apply zoom (100 = fit, 200 = 2x fit scale)
+    // Apply zoom (100 = fit to canvas, >100 = zoom in, <100 = zoom out)
     return fitScale * (zoom / 100);
-  }, [image, settings.padding, settings.inset, zoom]);
+  }, [image, settings.padding, settings.inset, zoom, canvasSize]);
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {

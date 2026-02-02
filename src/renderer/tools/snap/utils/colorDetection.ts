@@ -1,49 +1,55 @@
 /**
  * Color Detection Utilities for Snap Tool
  *
- * Detects the dominant background color from image edges to create
- * a seamless inner container that matches the screenshot's background.
+ * Detects the dominant background color from the center region of an image
+ * to create a seamless inner container that matches the screenshot's background.
+ * We sample from the center because edges often contain window chrome (title bars,
+ * borders, etc.) that don't represent the actual content background.
  */
 
 /**
- * Detects the dominant background color from the edges of an image.
- * Samples pixels from all four edges and finds the most common color.
+ * Detects the dominant background color from the center region of an image.
+ * Samples pixels from a grid in the center 60% of the image and finds the most common color.
  */
-export function detectBackgroundColor(
-  imageData: ImageData,
-  sampleDepth: number = 5
-): string {
+export function detectBackgroundColor(imageData: ImageData): string {
   const { width, height, data } = imageData;
   const colorCounts = new Map<string, number>();
 
-  // Sample from top edge
-  for (let x = 0; x < width; x += Math.max(1, Math.floor(width / 50))) {
-    for (let y = 0; y < sampleDepth && y < height; y++) {
-      const color = getPixelColor(data, width, x, y);
-      colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+  // Define center region (center 60% of the image)
+  // This avoids window chrome, title bars, and borders
+  const marginX = Math.floor(width * 0.2);
+  const marginY = Math.floor(height * 0.2);
+  const centerWidth = width - marginX * 2;
+  const centerHeight = height - marginY * 2;
+
+  // Sample from a grid in the center region
+  const sampleCountX = 20;
+  const sampleCountY = 20;
+  const stepX = Math.max(1, Math.floor(centerWidth / sampleCountX));
+  const stepY = Math.max(1, Math.floor(centerHeight / sampleCountY));
+
+  for (let i = 0; i < sampleCountX; i++) {
+    for (let j = 0; j < sampleCountY; j++) {
+      const x = marginX + i * stepX;
+      const y = marginY + j * stepY;
+      if (x < width && y < height) {
+        const color = getPixelColor(data, width, x, y);
+        colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+      }
     }
   }
 
-  // Sample from bottom edge
-  for (let x = 0; x < width; x += Math.max(1, Math.floor(width / 50))) {
-    for (let y = height - sampleDepth; y < height && y >= 0; y++) {
-      const color = getPixelColor(data, width, x, y);
-      colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
-    }
-  }
+  // Also sample from the corners of the center region for better coverage
+  const cornerOffsets = [
+    { x: marginX, y: marginY },
+    { x: width - marginX - 1, y: marginY },
+    { x: marginX, y: height - marginY - 1 },
+    { x: width - marginX - 1, y: height - marginY - 1 },
+  ];
 
-  // Sample from left edge
-  for (let y = 0; y < height; y += Math.max(1, Math.floor(height / 50))) {
-    for (let x = 0; x < sampleDepth && x < width; x++) {
-      const color = getPixelColor(data, width, x, y);
-      colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
-    }
-  }
-
-  // Sample from right edge
-  for (let y = 0; y < height; y += Math.max(1, Math.floor(height / 50))) {
-    for (let x = width - sampleDepth; x < width && x >= 0; x++) {
-      const color = getPixelColor(data, width, x, y);
+  for (const offset of cornerOffsets) {
+    if (offset.x >= 0 && offset.x < width && offset.y >= 0 && offset.y < height) {
+      const color = getPixelColor(data, width, offset.x, offset.y);
       colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
     }
   }

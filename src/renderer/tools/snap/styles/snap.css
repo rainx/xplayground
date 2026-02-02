@@ -241,11 +241,8 @@
 
 /* Preview canvas */
 .snap-preview-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-width: 100%;
-  max-height: 100%;
+  /* No max-width/max-height - CSS transform handles all scaling */
+  /* The parent .snap-canvas-area centers this with flexbox */
 }
 
 .snap-preview {
@@ -274,8 +271,7 @@
 
 .snap-preview-image {
   display: block;
-  max-width: 100%;
-  height: auto;
+  /* Let the image render at natural size - CSS transform handles scaling */
   /* Border-radius will be set dynamically */
 }
 

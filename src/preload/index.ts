@@ -40,6 +40,17 @@ const api = {
   window: {
     show: () => ipcRenderer.invoke('window:show'),
     hide: () => ipcRenderer.invoke('window:hide'),
+    toggleMaximize: (): Promise<{ success: boolean; isMaximized?: boolean }> =>
+      ipcRenderer.invoke('window:toggle-maximize'),
+    isMaximized: (): Promise<{ isMaximized: boolean }> =>
+      ipcRenderer.invoke('window:is-maximized'),
+    onMaximizeChanged: (callback: (isMaximized: boolean) => void) => {
+      const handler = (_event: unknown, isMaximized: boolean) => callback(isMaximized);
+      ipcRenderer.on('window:maximize-changed', handler);
+      return () => {
+        ipcRenderer.removeListener('window:maximize-changed', handler);
+      };
+    },
   },
 
   // Popup keyboard navigation (for non-focusable popup window)

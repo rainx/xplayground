@@ -316,6 +316,40 @@ export function registerWindowHandlers(mainWindow: BrowserWindow, popupWindow?: 
     return { success: true };
   });
 
+  // Toggle window maximize state
+  ipcMain.handle('window:toggle-maximize', async () => {
+    if (!mainWindow.isDestroyed()) {
+      if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+      } else {
+        mainWindow.maximize();
+      }
+      return { success: true, isMaximized: mainWindow.isMaximized() };
+    }
+    return { success: false };
+  });
+
+  // Get current maximize state
+  ipcMain.handle('window:is-maximized', async () => {
+    if (!mainWindow.isDestroyed()) {
+      return { isMaximized: mainWindow.isMaximized() };
+    }
+    return { isMaximized: false };
+  });
+
+  // Notify renderer when maximize state changes
+  mainWindow.on('maximize', () => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:maximize-changed', true);
+    }
+  });
+
+  mainWindow.on('unmaximize', () => {
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window:maximize-changed', false);
+    }
+  });
+
   // Open URL in default browser
   ipcMain.handle('shell:open-external', async (_event, url: string) => {
     await shell.openExternal(url);

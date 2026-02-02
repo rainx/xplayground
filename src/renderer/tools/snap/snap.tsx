@@ -6,6 +6,7 @@ import { useState, useCallback, useEffect, useRef, DragEvent } from 'react';
 import type { SnapSettings, SnapImage, AspectRatioPreset } from './types';
 import { DEFAULT_SETTINGS } from './types';
 import { GRADIENT_PRESETS, ASPECT_RATIO_PRESETS, getGradientById, gradientToCSS } from './constants/presets';
+import { detectBackgroundColorFromDataUrl } from './utils/colorDetection';
 import './styles/snap.css';
 
 export function Snap(): JSX.Element {
@@ -16,9 +17,29 @@ export function Snap(): JSX.Element {
   const [showCaptureMenu, setShowCaptureMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [zoom, setZoom] = useState(100); // Zoom percentage (100 = fit to view)
   const captureMenuRef = useRef<HTMLDivElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const canvasAreaRef = useRef<HTMLDivElement>(null);
+
+  // Helper to set image with background color detection
+  const setImageWithColorDetection = useCallback(async (
+    dataUrl: string,
+    width: number,
+    height: number,
+    name: string = 'Screenshot'
+  ) => {
+    const detectedBgColor = await detectBackgroundColorFromDataUrl(dataUrl);
+    setImage({
+      id: crypto.randomUUID(),
+      dataUrl,
+      width,
+      height,
+      name,
+      detectedBgColor,
+    });
+  }, []);
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -38,18 +59,17 @@ export function Snap(): JSX.Element {
   useEffect(() => {
     const unsubscribe = window.api.snap.onCaptured((result) => {
       if (result.success && result.imageData) {
-        setImage({
-          id: crypto.randomUUID(),
-          dataUrl: result.imageData,
-          width: result.width || 0,
-          height: result.height || 0,
-          name: 'Screenshot',
-        });
+        setImageWithColorDetection(
+          result.imageData,
+          result.width || 0,
+          result.height || 0,
+          'Screenshot'
+        );
       }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [setImageWithColorDetection]);
 
   // Capture region screenshot
   const handleCaptureRegion = useCallback(async () => {
@@ -58,18 +78,17 @@ export function Snap(): JSX.Element {
     try {
       const result = await window.api.snap.captureRegion();
       if (result.success && result.imageData) {
-        setImage({
-          id: crypto.randomUUID(),
-          dataUrl: result.imageData,
-          width: result.width || 0,
-          height: result.height || 0,
-          name: 'Screenshot',
-        });
+        await setImageWithColorDetection(
+          result.imageData,
+          result.width || 0,
+          result.height || 0,
+          'Screenshot'
+        );
       }
     } finally {
       setIsCapturing(false);
     }
-  }, []);
+  }, [setImageWithColorDetection]);
 
   // Capture window screenshot
   const handleCaptureWindow = useCallback(async () => {
@@ -78,13 +97,12 @@ export function Snap(): JSX.Element {
     try {
       const result = await window.api.snap.captureWindow();
       if (result.success && result.imageData) {
-        setImage({
-          id: crypto.randomUUID(),
-          dataUrl: result.imageData,
-          width: result.width || 0,
-          height: result.height || 0,
-          name: 'Screenshot',
-        });
+        await setImageWithColorDetection(
+          result.imageData,
+          result.width || 0,
+          result.height || 0,
+          'Screenshot'
+        );
       }
     } finally {
       setIsCapturing(false);
@@ -109,19 +127,31 @@ export function Snap(): JSX.Element {
     return '#667eea';
   }, [settings.background]);
 
-  // Render preview to canvas and return data URL
+  // Render to canvas at actual size for export (independent of preview scale)
   const renderToCanvas = useCallback(async (): Promise<string | null> => {
-    if (!image || !previewRef.current) return null;
+    if (!image) return null;
 
-    // Get the preview element dimensions
-    const previewElement = previewRef.current;
-    const rect = previewElement.getBoundingClientRect();
+    // Calculate padding (outer) and inset (inner)
+    const padding = settings.padding.mode === 'uniform'
+      ? settings.padding.uniform
+      : settings.padding.top;
+    const inset = settings.inset.value;
 
-    // Create canvas with the same dimensions
+    // Use actual image dimensions for export
+    const imgWidth = image.width;
+    const imgHeight = image.height;
+
+    // Calculate total canvas dimensions
+    const innerWidth = imgWidth + inset * 2;
+    const innerHeight = imgHeight + inset * 2;
+    const canvasWidth = innerWidth + padding * 2;
+    const canvasHeight = innerHeight + padding * 2;
+
+    // Create canvas at actual size (with 2x for retina quality)
     const canvas = document.createElement('canvas');
-    const scale = 2; // Render at 2x for better quality
-    canvas.width = rect.width * scale;
-    canvas.height = rect.height * scale;
+    const scale = 2;
+    canvas.width = canvasWidth * scale;
+    canvas.height = canvasHeight * scale;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
@@ -139,28 +169,23 @@ export function Snap(): JSX.Element {
         : null;
       if (gradient) {
         const angle = gradient.angle * Math.PI / 180;
-        const x1 = rect.width / 2 - Math.cos(angle) * rect.width / 2;
-        const y1 = rect.height / 2 - Math.sin(angle) * rect.height / 2;
-        const x2 = rect.width / 2 + Math.cos(angle) * rect.width / 2;
-        const y2 = rect.height / 2 + Math.sin(angle) * rect.height / 2;
+        const x1 = canvasWidth / 2 - Math.cos(angle) * canvasWidth / 2;
+        const y1 = canvasHeight / 2 - Math.sin(angle) * canvasHeight / 2;
+        const x2 = canvasWidth / 2 + Math.cos(angle) * canvasWidth / 2;
+        const y2 = canvasHeight / 2 + Math.sin(angle) * canvasHeight / 2;
 
         const linearGradient = ctx.createLinearGradient(x1, y1, x2, y2);
         gradient.colors.forEach((color, i) => {
           linearGradient.addColorStop(i / (gradient.colors.length - 1), color);
         });
         ctx.fillStyle = linearGradient;
-        ctx.fillRect(0, 0, rect.width, rect.height);
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
       }
     } else {
       // Solid color
       ctx.fillStyle = bgCSS;
-      ctx.fillRect(0, 0, rect.width, rect.height);
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
     }
-
-    // Calculate padding
-    const padding = settings.padding.mode === 'uniform'
-      ? settings.padding.uniform
-      : settings.padding.top; // Simplified for uniform padding
 
     // Load the image
     const img = new Image();
@@ -168,26 +193,11 @@ export function Snap(): JSX.Element {
 
     return new Promise((resolve) => {
       img.onload = () => {
-        // Calculate image dimensions to fit within preview
-        const maxWidth = 800;
-        const maxHeight = 600;
-        let imgWidth = img.width;
-        let imgHeight = img.height;
+        // Inner container position (after outer padding)
+        const innerX = padding;
+        const innerY = padding;
 
-        if (imgWidth > maxWidth) {
-          imgHeight = (maxWidth / imgWidth) * imgHeight;
-          imgWidth = maxWidth;
-        }
-        if (imgHeight > maxHeight) {
-          imgWidth = (maxHeight / imgHeight) * imgWidth;
-          imgHeight = maxHeight;
-        }
-
-        // Calculate position (centered)
-        const x = padding;
-        const y = padding;
-
-        // Draw shadow if enabled
+        // Draw shadow on inner container if enabled
         if (settings.shadow.enabled) {
           ctx.save();
           ctx.shadowColor = `rgba(0, 0, 0, ${settings.shadow.opacity / 100})`;
@@ -195,23 +205,24 @@ export function Snap(): JSX.Element {
           ctx.shadowOffsetX = settings.shadow.offsetX;
           ctx.shadowOffsetY = settings.shadow.offsetY;
 
-          // Draw a rounded rect for shadow
+          // Draw inner container rounded rect for shadow
           ctx.beginPath();
-          ctx.roundRect(x, y, imgWidth, imgHeight, settings.cornerRadius);
-          ctx.fillStyle = '#fff';
+          ctx.roundRect(innerX, innerY, innerWidth, innerHeight, settings.cornerRadius);
+          ctx.fillStyle = image.detectedBgColor || '#ffffff';
           ctx.fill();
           ctx.restore();
         }
 
-        // Clip to rounded rect for image
-        ctx.save();
+        // Draw inner container background (without shadow)
         ctx.beginPath();
-        ctx.roundRect(x, y, imgWidth, imgHeight, settings.cornerRadius);
-        ctx.clip();
+        ctx.roundRect(innerX, innerY, innerWidth, innerHeight, settings.cornerRadius);
+        ctx.fillStyle = image.detectedBgColor || '#ffffff';
+        ctx.fill();
 
-        // Draw image
-        ctx.drawImage(img, x, y, imgWidth, imgHeight);
-        ctx.restore();
+        // Draw image inside inner container (with inset offset)
+        const imgX = innerX + inset;
+        const imgY = innerY + inset;
+        ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
 
         // Return data URL
         resolve(canvas.toDataURL('image/png'));
@@ -270,22 +281,16 @@ export function Snap(): JSX.Element {
   // Load image from blob
   const loadImageFromBlob = useCallback(async (blob: Blob) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const dataUrl = e.target?.result as string;
       const img = new Image();
-      img.onload = () => {
-        setImage({
-          id: crypto.randomUUID(),
-          dataUrl,
-          width: img.width,
-          height: img.height,
-          name: 'Screenshot',
-        });
+      img.onload = async () => {
+        await setImageWithColorDetection(dataUrl, img.width, img.height, 'Screenshot');
       };
       img.src = dataUrl;
     };
     reader.readAsDataURL(blob);
-  }, []);
+  }, [setImageWithColorDetection]);
 
   // Handle paste from clipboard
   useEffect(() => {
@@ -384,6 +389,42 @@ export function Snap(): JSX.Element {
     return `${padding.top}px ${padding.right}px ${padding.bottom}px ${padding.left}px`;
   }, [settings.padding]);
 
+  // Calculate preview scale to fit in available space
+  const getPreviewScale = useCallback(() => {
+    if (!image || !canvasAreaRef.current) return 1;
+
+    const canvasArea = canvasAreaRef.current;
+    const availableWidth = canvasArea.clientWidth - 48; // Account for padding
+    const availableHeight = canvasArea.clientHeight - 48;
+
+    // Calculate full rendered size (padding + inset + image)
+    const padding = settings.padding.mode === 'uniform' ? settings.padding.uniform : settings.padding.top;
+    const inset = settings.inset.value;
+    const fullWidth = image.width + (padding + inset) * 2;
+    const fullHeight = image.height + (padding + inset) * 2;
+
+    // Calculate scale to fit
+    const scaleX = availableWidth / fullWidth;
+    const scaleY = availableHeight / fullHeight;
+    const fitScale = Math.min(scaleX, scaleY, 1); // Don't scale up beyond 100%
+
+    // Apply zoom (100 = fit, 200 = 2x fit scale)
+    return fitScale * (zoom / 100);
+  }, [image, settings.padding, settings.inset, zoom]);
+
+  // Zoom controls
+  const handleZoomIn = useCallback(() => {
+    setZoom((prev) => Math.min(prev + 25, 200));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((prev) => Math.max(prev - 25, 25));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(100);
+  }, []);
+
   return (
     <div className="snap-tool">
       {/* Toolbar */}
@@ -417,6 +458,35 @@ export function Snap(): JSX.Element {
           <button className="snap-btn" title="Import image file">
             <span>Import</span>
           </button>
+
+          {/* Zoom controls */}
+          {image && (
+            <div className="snap-zoom-controls">
+              <button
+                className="snap-zoom-btn"
+                onClick={handleZoomOut}
+                disabled={zoom <= 25}
+                title="Zoom out"
+              >
+                −
+              </button>
+              <button
+                className="snap-zoom-value"
+                onClick={handleZoomReset}
+                title="Reset zoom to fit"
+              >
+                {zoom}%
+              </button>
+              <button
+                className="snap-zoom-btn"
+                onClick={handleZoomIn}
+                disabled={zoom >= 200}
+                title="Zoom in"
+              >
+                +
+              </button>
+            </div>
+          )}
         </div>
         <div className="snap-toolbar-right">
           <div className="snap-export-wrapper" ref={exportMenuRef}>
@@ -451,6 +521,7 @@ export function Snap(): JSX.Element {
       <div className="snap-content">
         {/* Canvas area */}
         <div
+          ref={canvasAreaRef}
           className="snap-canvas-area"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -465,7 +536,13 @@ export function Snap(): JSX.Element {
               </div>
             </div>
           ) : (
-            <div className="snap-preview-wrapper">
+            <div
+              className="snap-preview-wrapper"
+              style={{
+                transform: `scale(${getPreviewScale()})`,
+                transformOrigin: 'center center',
+              }}
+            >
               <div
                 ref={previewRef}
                 className="snap-preview"
@@ -474,22 +551,22 @@ export function Snap(): JSX.Element {
                   padding: typeof getPadding() === 'number' ? `${getPadding()}px` : getPadding(),
                 }}
               >
+                {/* Inner container with detected background color */}
                 <div
-                  className="snap-preview-image-container"
+                  className="snap-inner-container"
                   style={{
+                    background: image.detectedBgColor || '#ffffff',
                     borderRadius: `${settings.cornerRadius}px`,
                     boxShadow: getShadowCSS(),
-                    overflow: 'hidden',
+                    padding: `${settings.inset.value}px`,
                   }}
                 >
+                  {/* Image is not clipped - full content preserved */}
                   <img
                     className="snap-preview-image"
                     src={image.dataUrl}
                     alt="Preview"
-                    style={{
-                      maxWidth: '800px',
-                      maxHeight: '600px',
-                    }}
+                    style={{ display: 'block' }}
                   />
                 </div>
               </div>
@@ -554,6 +631,52 @@ export function Snap(): JSX.Element {
                   })
                 }
               />
+            </div>
+          </div>
+
+          {/* Inset */}
+          <div className="snap-control-section">
+            <div className="snap-slider-control">
+              <div className="snap-slider-header">
+                <span className="snap-control-label" style={{ marginBottom: 0 }}>
+                  Inset
+                </span>
+                <span className="snap-slider-value-group">
+                  <span className="snap-slider-value">{settings.inset.value}px</span>
+                  {image?.detectedBgColor && (
+                    <span
+                      className="snap-detected-color"
+                      style={{ background: image.detectedBgColor }}
+                      title={`Detected: ${image.detectedBgColor}`}
+                    />
+                  )}
+                </span>
+              </div>
+              <input
+                type="range"
+                className="snap-slider"
+                min="0"
+                max="100"
+                value={settings.inset.value}
+                onChange={(e) =>
+                  updateSettings('inset', {
+                    ...settings.inset,
+                    value: Number(e.target.value),
+                  })
+                }
+              />
+            </div>
+            <div
+              className="snap-toggle snap-toggle-small"
+              onClick={() =>
+                updateSettings('inset', {
+                  ...settings.inset,
+                  balance: !settings.inset.balance,
+                })
+              }
+            >
+              <div className={`snap-toggle-switch ${settings.inset.balance ? 'active' : ''}`} />
+              <span className="snap-toggle-label">Balance</span>
             </div>
           </div>
 

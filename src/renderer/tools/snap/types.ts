@@ -23,7 +23,7 @@ export interface BackgroundSettings {
   solidColor?: string;
 }
 
-// Padding types
+// Padding types (outer padding between gradient background and inner container)
 export interface PaddingSettings {
   mode: 'uniform' | 'individual';
   uniform: number;
@@ -31,6 +31,12 @@ export interface PaddingSettings {
   right: number;
   bottom: number;
   left: number;
+}
+
+// Inset types (inner padding between inner container and image)
+export interface InsetSettings {
+  value: number;
+  balance: boolean; // Auto-balance based on image aspect ratio
 }
 
 // Shadow types
@@ -69,6 +75,7 @@ export interface AspectRatioInfo {
 export interface SnapSettings {
   background: BackgroundSettings;
   padding: PaddingSettings;
+  inset: InsetSettings;
   cornerRadius: number;
   shadow: ShadowSettings;
   aspectRatio: AspectRatioPreset;
@@ -82,6 +89,7 @@ export interface SnapImage {
   width: number;
   height: number;
   name?: string;
+  detectedBgColor?: string; // Background color detected from image edges
 }
 
 // Export options
@@ -106,6 +114,10 @@ export const DEFAULT_SETTINGS: SnapSettings = {
     right: 64,
     bottom: 64,
     left: 64,
+  },
+  inset: {
+    value: 16,
+    balance: true,
   },
   cornerRadius: 12,
   shadow: {

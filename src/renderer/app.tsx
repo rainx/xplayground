@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/sidebar';
 import { ToolContainer } from './components/tool-container';
 import { toolRegistry } from './tools/registry';
@@ -6,6 +6,14 @@ import { toolRegistry } from './tools/registry';
 function App(): JSX.Element {
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const tools = toolRegistry.getAll();
+
+  // Listen for snap:navigate event from global shortcut
+  useEffect(() => {
+    const unsubscribe = window.api.snap.onNavigate(() => {
+      setActiveToolId('snap');
+    });
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="app">

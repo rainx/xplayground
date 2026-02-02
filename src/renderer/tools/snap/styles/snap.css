@@ -70,6 +70,57 @@
   opacity: 0.7;
 }
 
+/* Zoom controls */
+.snap-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
+.snap-zoom-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.snap-zoom-btn:hover:not(:disabled) {
+  background: #3a3a3d;
+}
+
+.snap-zoom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.snap-zoom-value {
+  min-width: 52px;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.snap-zoom-value:hover {
+  color: var(--text-primary);
+}
+
 /* Capture menu dropdown */
 .snap-capture-wrapper {
   position: relative;
@@ -213,6 +264,14 @@
   /* Shadow and border-radius will be set dynamically */
 }
 
+/* Inner container with detected background color */
+.snap-inner-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Background, shadow, border-radius and padding set dynamically */
+}
+
 .snap-preview-image {
   display: block;
   max-width: 100%;
@@ -297,6 +356,23 @@
 .snap-slider-value {
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+.snap-slider-value-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.snap-detected-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.snap-toggle-small {
+  margin-top: 8px;
   font-variant-numeric: tabular-nums;
 }
 

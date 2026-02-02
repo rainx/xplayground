@@ -224,15 +224,19 @@ async function handleSnapCaptureRegion(): Promise<void> {
   try {
     const result = await snapService.captureRegion();
 
-    // Show main window and send captured result
+    // Show main window, focus it, and send captured result
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
+      mainWindow.focus();
+      // First send navigation event, then the captured data
+      mainWindow.webContents.send('snap:navigate');
       mainWindow.webContents.send('snap:captured', result);
     }
   } catch (error) {
     console.error('Snap capture region error:', error);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
+      mainWindow.focus();
     }
   }
 }
@@ -248,15 +252,19 @@ async function handleSnapCaptureWindow(): Promise<void> {
   try {
     const result = await snapService.captureWindow();
 
-    // Show main window and send captured result
+    // Show main window, focus it, and send captured result
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
+      mainWindow.focus();
+      // First send navigation event, then the captured data
+      mainWindow.webContents.send('snap:navigate');
       mainWindow.webContents.send('snap:captured', result);
     }
   } catch (error) {
     console.error('Snap capture window error:', error);
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
+      mainWindow.focus();
     }
   }
 }

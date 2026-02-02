@@ -199,6 +199,7 @@ declare global {
             error?: string;
           }) => void
         ) => () => void;
+        onNavigate: (callback: () => void) => () => void;
       };
       // Keyboard Shortcuts APIs
       shortcuts: {

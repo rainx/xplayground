@@ -292,6 +292,15 @@ const api = {
         ipcRenderer.removeListener('snap:captured', handler);
       };
     },
+
+    // Listen for navigation request (when global shortcut is triggered)
+    onNavigate: (callback: () => void) => {
+      const handler = () => callback();
+      ipcRenderer.on('snap:navigate', handler);
+      return () => {
+        ipcRenderer.removeListener('snap:navigate', handler);
+      };
+    },
   },
 
   // Keyboard Shortcuts APIs

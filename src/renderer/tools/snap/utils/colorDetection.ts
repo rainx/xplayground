@@ -1,56 +1,69 @@
 /**
  * Color Detection Utilities for Snap Tool
  *
- * Detects the dominant background color from the center region of an image
- * to create a seamless inner container that matches the screenshot's background.
- * We sample from the center because edges often contain window chrome (title bars,
- * borders, etc.) that don't represent the actual content background.
+ * Detects the dominant background color from the edge regions of an image
+ * to create seamless edge expansion that matches the screenshot's border colors.
+ * We sample from edges because this background is used for edge expansion,
+ * so we need colors that will blend naturally with the image borders.
  */
 
 /**
- * Detects the dominant background color from the center region of an image.
- * Samples pixels from a grid in the center 60% of the image and finds the most common color.
+ * Detects the dominant background color from the edge regions of an image.
+ * Samples pixels from the outer 5% of each edge and finds the most common color.
+ * This is optimized for edge expansion where we need colors that match the borders.
  */
 export function detectBackgroundColor(imageData: ImageData): string {
   const { width, height, data } = imageData;
   const colorCounts = new Map<string, number>();
 
-  // Define center region (center 60% of the image)
-  // This avoids window chrome, title bars, and borders
-  const marginX = Math.floor(width * 0.2);
-  const marginY = Math.floor(height * 0.2);
-  const centerWidth = width - marginX * 2;
-  const centerHeight = height - marginY * 2;
+  // Define edge region (outer 5% of the image on each side)
+  // This samples the actual border colors for seamless edge expansion
+  const edgePercent = 0.05;
+  const edgeX = Math.max(1, Math.floor(width * edgePercent));
+  const edgeY = Math.max(1, Math.floor(height * edgePercent));
 
-  // Sample from a grid in the center region
-  const sampleCountX = 20;
-  const sampleCountY = 20;
-  const stepX = Math.max(1, Math.floor(centerWidth / sampleCountX));
-  const stepY = Math.max(1, Math.floor(centerHeight / sampleCountY));
+  // Number of samples per edge
+  const samplesPerEdge = 30;
 
-  for (let i = 0; i < sampleCountX; i++) {
-    for (let j = 0; j < sampleCountY; j++) {
-      const x = marginX + i * stepX;
-      const y = marginY + j * stepY;
-      if (x < width && y < height) {
-        const color = getPixelColor(data, width, x, y);
+  // Sample from top edge
+  const stepTopX = Math.max(1, Math.floor(width / samplesPerEdge));
+  for (let x = 0; x < width; x += stepTopX) {
+    for (let y = 0; y < edgeY; y++) {
+      const color = getPixelColor(data, width, x, y);
+      if (color !== null) {
         colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
       }
     }
   }
 
-  // Also sample from the corners of the center region for better coverage
-  const cornerOffsets = [
-    { x: marginX, y: marginY },
-    { x: width - marginX - 1, y: marginY },
-    { x: marginX, y: height - marginY - 1 },
-    { x: width - marginX - 1, y: height - marginY - 1 },
-  ];
+  // Sample from bottom edge
+  for (let x = 0; x < width; x += stepTopX) {
+    for (let y = height - edgeY; y < height; y++) {
+      const color = getPixelColor(data, width, x, y);
+      if (color !== null) {
+        colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+      }
+    }
+  }
 
-  for (const offset of cornerOffsets) {
-    if (offset.x >= 0 && offset.x < width && offset.y >= 0 && offset.y < height) {
-      const color = getPixelColor(data, width, offset.x, offset.y);
-      colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+  // Sample from left edge (excluding corners already sampled)
+  const stepLeftY = Math.max(1, Math.floor(height / samplesPerEdge));
+  for (let y = edgeY; y < height - edgeY; y += stepLeftY) {
+    for (let x = 0; x < edgeX; x++) {
+      const color = getPixelColor(data, width, x, y);
+      if (color !== null) {
+        colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+      }
+    }
+  }
+
+  // Sample from right edge (excluding corners already sampled)
+  for (let y = edgeY; y < height - edgeY; y += stepLeftY) {
+    for (let x = width - edgeX; x < width; x++) {
+      const color = getPixelColor(data, width, x, y);
+      if (color !== null) {
+        colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+      }
     }
   }
 
@@ -65,23 +78,41 @@ export function detectBackgroundColor(imageData: ImageData): string {
     }
   }
 
+  // Debug: log color distribution
+  const sortedColors = Array.from(colorCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
+  console.log('[ColorDetection] Image size:', width, 'x', height);
+  console.log('[ColorDetection] Edge region:', edgeX, 'x', edgeY);
+  console.log('[ColorDetection] Total colors found:', colorCounts.size);
+  console.log('[ColorDetection] Top 10 colors:', sortedColors);
+  console.log('[ColorDetection] Dominant color:', dominantColor, 'count:', maxCount);
+
   return dominantColor;
 }
 
 /**
- * Gets the color of a pixel as a hex string.
+ * Gets the color of a pixel as a hex string, or null if the pixel is transparent.
  * Groups similar colors together to handle anti-aliasing and compression artifacts.
+ * Ignores transparent/semi-transparent pixels (like window shadows in macOS screenshots).
  */
 function getPixelColor(
   data: Uint8ClampedArray,
   width: number,
   x: number,
   y: number
-): string {
+): string | null {
   const index = (y * width + x) * 4;
   const r = data[index];
   const g = data[index + 1];
   const b = data[index + 2];
+  const a = data[index + 3];
+
+  // Skip transparent or semi-transparent pixels (alpha < 200)
+  // This filters out window shadows which are black with low alpha
+  if (a < 200) {
+    return null;
+  }
 
   // Quantize colors to reduce noise from compression artifacts
   // Round to nearest 8 to group similar colors

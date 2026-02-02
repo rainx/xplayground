@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TitleBar } from './components/titlebar';
 import { Sidebar } from './components/sidebar';
 import { ToolContainer } from './components/tool-container';
+import { Dashboard } from './components/dashboard';
 import { toolRegistry } from './tools/registry';
 
 function App(): JSX.Element {
@@ -29,10 +30,7 @@ function App(): JSX.Element {
           {activeToolId ? (
             <ToolContainer toolId={activeToolId} />
           ) : (
-            <div className="welcome">
-              <h1>xToolbox</h1>
-              <p>Select a tool from the sidebar to get started.</p>
-            </div>
+            <Dashboard tools={tools} onSelectTool={setActiveToolId} />
           )}
         </main>
       </div>

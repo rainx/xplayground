@@ -25,7 +25,8 @@
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.0",
-    "@electron-toolkit/utils": "^3.0.0"
+    "@electron-toolkit/utils": "^3.0.0",
+    "lucide-react": "^0.563.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-ts": "^2.0.0",

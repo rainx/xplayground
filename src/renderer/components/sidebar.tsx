@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ToolMetadata } from '@/shared/types';
 import { KeyboardShortcutsDialog } from './keyboard-shortcuts-dialog';
 import logo from '../assets/logo.svg';
+import { Settings } from 'lucide-react';
 
 interface SidebarProps {
   tools: ToolMetadata[];
@@ -44,20 +45,10 @@ export function Sidebar({
         <button
           className="settings-btn"
           onClick={() => setShowShortcutsDialog(true)}
-          title="Keyboard Shortcuts"
+          title="Settings"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <rect x="2" y="4" width="20" height="16" rx="2" />
-            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M6 16h8" />
-          </svg>
-          <span>Shortcuts</span>
+          <Settings size={16} />
+          <span>Settings</span>
         </button>
       </div>
 

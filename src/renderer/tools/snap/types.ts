@@ -90,6 +90,8 @@ export interface SnapImage {
   height: number;
   name?: string;
   detectedBgColor?: string; // Background color detected from image edges
+  edgeBgCoverage?: number; // 0-1 coverage of dominant edge color
+  edgeBgSolid?: boolean; // True when edge color is solid enough to expand
 }
 
 // Export options

@@ -7,14 +7,24 @@
  * so we need colors that will blend naturally with the image borders.
  */
 
+export interface EdgeBackgroundDetection {
+  color: string;
+  coverage: number;
+  isSolid: boolean;
+  totalSamples: number;
+}
+
+const EDGE_SOLID_THRESHOLD = 0.7;
+
 /**
  * Detects the dominant background color from the edge regions of an image.
  * Samples pixels from the outer 5% of each edge and finds the most common color.
- * This is optimized for edge expansion where we need colors that match the borders.
+ * Also returns edge coverage to determine if the border is solid enough to expand.
  */
-export function detectBackgroundColor(imageData: ImageData): string {
+export function detectBackgroundColor(imageData: ImageData): EdgeBackgroundDetection {
   const { width, height, data } = imageData;
   const colorCounts = new Map<string, number>();
+  let totalSamples = 0;
 
   // Define edge region (outer 5% of the image on each side)
   // This samples the actual border colors for seamless edge expansion
@@ -32,6 +42,7 @@ export function detectBackgroundColor(imageData: ImageData): string {
       const color = getPixelColor(data, width, x, y);
       if (color !== null) {
         colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+        totalSamples += 1;
       }
     }
   }
@@ -42,6 +53,7 @@ export function detectBackgroundColor(imageData: ImageData): string {
       const color = getPixelColor(data, width, x, y);
       if (color !== null) {
         colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+        totalSamples += 1;
       }
     }
   }
@@ -53,6 +65,7 @@ export function detectBackgroundColor(imageData: ImageData): string {
       const color = getPixelColor(data, width, x, y);
       if (color !== null) {
         colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+        totalSamples += 1;
       }
     }
   }
@@ -63,6 +76,7 @@ export function detectBackgroundColor(imageData: ImageData): string {
       const color = getPixelColor(data, width, x, y);
       if (color !== null) {
         colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+        totalSamples += 1;
       }
     }
   }
@@ -78,6 +92,9 @@ export function detectBackgroundColor(imageData: ImageData): string {
     }
   }
 
+  const coverage = totalSamples > 0 ? maxCount / totalSamples : 0;
+  const isSolid = totalSamples > 0 && coverage >= EDGE_SOLID_THRESHOLD;
+
   // Debug: log color distribution
   const sortedColors = Array.from(colorCounts.entries())
     .sort((a, b) => b[1] - a[1])
@@ -85,10 +102,17 @@ export function detectBackgroundColor(imageData: ImageData): string {
   console.log('[ColorDetection] Image size:', width, 'x', height);
   console.log('[ColorDetection] Edge region:', edgeX, 'x', edgeY);
   console.log('[ColorDetection] Total colors found:', colorCounts.size);
+  console.log('[ColorDetection] Total samples:', totalSamples);
   console.log('[ColorDetection] Top 10 colors:', sortedColors);
   console.log('[ColorDetection] Dominant color:', dominantColor, 'count:', maxCount);
+  console.log('[ColorDetection] Coverage:', coverage, 'threshold:', EDGE_SOLID_THRESHOLD);
 
-  return dominantColor;
+  return {
+    color: dominantColor,
+    coverage,
+    isSolid,
+    totalSamples,
+  };
 }
 
 /**
@@ -132,11 +156,11 @@ function rgbToHex(r: number, g: number, b: number): string {
 
 /**
  * Loads an image and detects its background color.
- * Returns a promise that resolves to the detected color.
+ * Returns a promise that resolves to the detection result.
  */
 export function detectBackgroundColorFromDataUrl(
   dataUrl: string
-): Promise<string> {
+): Promise<EdgeBackgroundDetection> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -148,18 +172,28 @@ export function detectBackgroundColorFromDataUrl(
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        resolve('#ffffff');
+        resolve({
+          color: '#ffffff',
+          coverage: 0,
+          isSolid: false,
+          totalSamples: 0,
+        });
         return;
       }
 
       ctx.drawImage(img, 0, 0);
       const imageData = ctx.getImageData(0, 0, img.width, img.height);
-      const color = detectBackgroundColor(imageData);
-      resolve(color);
+      const detection = detectBackgroundColor(imageData);
+      resolve(detection);
     };
 
     img.onerror = () => {
-      resolve('#ffffff');
+      resolve({
+        color: '#ffffff',
+        coverage: 0,
+        isSolid: false,
+        totalSamples: 0,
+      });
     };
 
     img.src = dataUrl;

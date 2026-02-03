@@ -23,6 +23,11 @@ export function Snap(): JSX.Element {
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
+  const isEdgeBackgroundSolid = image ? Boolean(image.edgeBgSolid) : true;
+  const effectiveInset = isEdgeBackgroundSolid ? settings.inset.value : 0;
+  const innerBackground = isEdgeBackgroundSolid
+    ? (image?.detectedBgColor ?? '#ffffff')
+    : 'transparent';
 
   // Helper to get actual image dimensions from data URL
   // This is needed because nativeImage.getSize() returns CSS logical pixels,
@@ -50,14 +55,16 @@ export function Snap(): JSX.Element {
   ) => {
     // Get actual image dimensions (not CSS logical pixels)
     const { width: actualWidth, height: actualHeight } = await getActualImageDimensions(dataUrl);
-    const detectedBgColor = await detectBackgroundColorFromDataUrl(dataUrl);
+    const detection = await detectBackgroundColorFromDataUrl(dataUrl);
     setImage({
       id: crypto.randomUUID(),
       dataUrl,
       width: actualWidth,
       height: actualHeight,
       name,
-      detectedBgColor,
+      detectedBgColor: detection.isSolid ? detection.color : undefined,
+      edgeBgCoverage: detection.coverage,
+      edgeBgSolid: detection.isSolid,
     });
   }, [getActualImageDimensions]);
 
@@ -174,7 +181,7 @@ export function Snap(): JSX.Element {
     const padding = settings.padding.mode === 'uniform'
       ? settings.padding.uniform
       : settings.padding.top;
-    const inset = settings.inset.value;
+    const inset = effectiveInset;
 
     // Use actual image dimensions for export
     const imgWidth = image.width;
@@ -236,6 +243,10 @@ export function Snap(): JSX.Element {
         const innerX = padding;
         const innerY = padding;
 
+        const shadowFill = innerBackground === 'transparent'
+          ? 'rgba(0, 0, 0, 0.001)'
+          : innerBackground;
+
         // Draw shadow on inner container if enabled
         if (settings.shadow.enabled) {
           ctx.save();
@@ -247,21 +258,28 @@ export function Snap(): JSX.Element {
           // Draw inner container rounded rect for shadow
           ctx.beginPath();
           ctx.roundRect(innerX, innerY, innerWidth, innerHeight, settings.cornerRadius);
-          ctx.fillStyle = image.detectedBgColor || '#ffffff';
+          ctx.fillStyle = shadowFill;
           ctx.fill();
           ctx.restore();
         }
 
         // Draw inner container background (without shadow)
-        ctx.beginPath();
-        ctx.roundRect(innerX, innerY, innerWidth, innerHeight, settings.cornerRadius);
-        ctx.fillStyle = image.detectedBgColor || '#ffffff';
-        ctx.fill();
+        if (innerBackground !== 'transparent') {
+          ctx.beginPath();
+          ctx.roundRect(innerX, innerY, innerWidth, innerHeight, settings.cornerRadius);
+          ctx.fillStyle = innerBackground;
+          ctx.fill();
+        }
 
         // Draw image inside inner container (with inset offset)
         const imgX = innerX + inset;
         const imgY = innerY + inset;
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(innerX, innerY, innerWidth, innerHeight, settings.cornerRadius);
+        ctx.clip();
         ctx.drawImage(img, imgX, imgY, imgWidth, imgHeight);
+        ctx.restore();
 
         // Return data URL
         resolve(canvas.toDataURL('image/png'));
@@ -270,7 +288,7 @@ export function Snap(): JSX.Element {
       img.onerror = () => resolve(null);
       img.src = image.dataUrl;
     });
-  }, [image, settings, getBackgroundCSS]);
+  }, [image, settings, getBackgroundCSS, effectiveInset, innerBackground]);
 
   // Copy processed image to clipboard
   const handleCopyToClipboard = useCallback(async () => {
@@ -438,7 +456,7 @@ export function Snap(): JSX.Element {
 
     // Calculate full rendered size (padding + inset + image)
     const padding = settings.padding.mode === 'uniform' ? settings.padding.uniform : settings.padding.top;
-    const inset = settings.inset.value;
+    const inset = effectiveInset;
     const fullWidth = image.width + (padding + inset) * 2;
     const fullHeight = image.height + (padding + inset) * 2;
 
@@ -450,7 +468,7 @@ export function Snap(): JSX.Element {
 
     // Apply zoom (100 = fit to canvas, >100 = zoom in, <100 = zoom out)
     return fitScale * (zoom / 100);
-  }, [image, settings.padding, settings.inset, zoom, canvasSize]);
+  }, [image, settings.padding, effectiveInset, zoom, canvasSize]);
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {
@@ -595,13 +613,14 @@ export function Snap(): JSX.Element {
                 <div
                   className="snap-inner-container"
                   style={{
-                    background: image.detectedBgColor || '#ffffff',
+                    background: innerBackground,
                     borderRadius: `${settings.cornerRadius}px`,
                     boxShadow: getShadowCSS(),
-                    padding: `${settings.inset.value}px`,
+                    padding: `${effectiveInset}px`,
+                    overflow: settings.cornerRadius > 0 ? 'hidden' : 'visible',
                   }}
                 >
-                  {/* Image is not clipped - full content preserved */}
+                  {/* Image is clipped to match corner radius */}
                   <img
                     className="snap-preview-image"
                     src={image.dataUrl}
@@ -682,8 +701,17 @@ export function Snap(): JSX.Element {
                   Inset
                 </span>
                 <span className="snap-slider-value-group">
-                  <span className="snap-slider-value">{settings.inset.value}px</span>
-                  {image?.detectedBgColor && (
+                  <span
+                    className="snap-slider-value"
+                    title={
+                      Boolean(image) && !isEdgeBackgroundSolid
+                        ? 'Edge colors not uniform; inset disabled'
+                        : undefined
+                    }
+                  >
+                    {effectiveInset}px
+                  </span>
+                  {isEdgeBackgroundSolid && image?.detectedBgColor && (
                     <span
                       className="snap-detected-color"
                       style={{ background: image.detectedBgColor }}
@@ -697,7 +725,8 @@ export function Snap(): JSX.Element {
                 className="snap-slider"
                 min="0"
                 max="100"
-                value={settings.inset.value}
+                value={effectiveInset}
+                disabled={Boolean(image) && !isEdgeBackgroundSolid}
                 onChange={(e) =>
                   updateSettings('inset', {
                     ...settings.inset,

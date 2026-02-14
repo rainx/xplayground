@@ -22,7 +22,7 @@ export function useSearch(): UseSearchResult {
     query: '',
   });
 
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const executeSearch = useCallback(async (filter: SearchFilter) => {
     if (!filter.query && (!filter.contentTypes || filter.contentTypes.length === 0)) {

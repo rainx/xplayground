@@ -373,7 +373,7 @@ app.whenReady().then(async () => {
   // Set dock icon for macOS in development
   if (process.platform === 'darwin' && !app.isPackaged) {
     const iconPath = join(__dirname, '../../resources/icon.png');
-    app.dock.setIcon(iconPath);
+    app.dock?.setIcon(iconPath);
   }
 
   const window = createWindow();

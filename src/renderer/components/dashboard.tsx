@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ToolMetadata } from '@/shared/types';
 import { Command, Camera, Zap, Lightbulb } from 'lucide-react';
 

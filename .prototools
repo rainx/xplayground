@@ -10,9 +10,3 @@ pnpm = "latest"
 
 # Rust - latest stable for native macOS clipboard monitoring
 rust = "stable"
-
-[plugins]
-# Built-in plugins for Node ecosystem
-node = "source:node"
-pnpm = "source:pnpm"
-rust = "source:rust"

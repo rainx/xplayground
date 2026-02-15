@@ -55,8 +55,14 @@ pnpm install
 # Development mode with hot reload
 pnpm dev
 
-# Build native Rust modules
+# Build native Rust modules only
 pnpm build:native
+
+# Build Electron app only (without native)
+pnpm build:app
+
+# Build everything (native + Electron, recommended for production)
+pnpm build
 
 # Run all tests
 pnpm test
@@ -70,12 +76,17 @@ pnpm typecheck
 # Linting
 pnpm lint
 
-# Build production app
-pnpm build
-
-# Package for macOS
+# Package for distribution (creates DMG + ZIP)
 pnpm package
+
+# Package to directory only (faster, for testing)
+pnpm package:dir
+
+# Package for all architectures (Intel + Apple Silicon)
+pnpm dist:all
 ```
+
+> **Note**: See [BUILD.md](BUILD.md) for detailed build and packaging documentation.
 
 ## Adding New Tools
 

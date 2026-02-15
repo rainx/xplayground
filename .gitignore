@@ -6,6 +6,7 @@ node_modules/
 out/
 dist/
 *.node
+!native/*.node
 
 # Native build
 native/target/

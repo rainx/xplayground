@@ -7,9 +7,10 @@
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev --watch",
-    "build": "electron-vite build",
-    "preview": "electron-vite preview",
+    "build": "pnpm build:native && electron-vite build",
     "build:native": "cd native && pnpm build",
+    "build:app": "electron-vite build",
+    "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
     "typecheck:main": "tsc --noEmit -p src/main/tsconfig.json",
     "typecheck:preload": "tsc --noEmit -p src/preload/tsconfig.json",
@@ -20,7 +21,10 @@
     "test:watch": "vitest",
     "test:unit": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "package": "electron-builder --mac --config",
+    "package": "pnpm build && electron-builder --mac --config",
+    "package:dir": "pnpm build && electron-builder --mac --dir",
+    "dist": "pnpm package",
+    "dist:all": "pnpm build && electron-builder --mac --x64 --arm64",
     "cli": "electron . --cli"
   },
   "dependencies": {
@@ -61,19 +65,68 @@
   "build": {
     "appId": "com.rainx.xtoolbox",
     "productName": "xToolbox",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "out/**/*",
+      "native/**/*.node",
+      "!native/node_modules",
+      "!native/target",
+      "!native/src",
+      "!native/Cargo.*",
+      "!native/build.rs",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "native/**/*.node"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
     "mac": {
       "icon": "resources/icon.png",
       "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
       ]
     },
-    "files": [
-      "out/**/*"
-    ],
-    "directories": {
-      "output": "dist"
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "title": "${productName} ${version}",
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "resources/icon.png"
     }
   }
 }

@@ -209,6 +209,7 @@ Before completing any task:
 - 键盘导航 - 方向键选择，Enter 粘贴，Escape 关闭
 - 右键菜单 - 粘贴、复制、删除、分类管理等操作
 - 搜索过滤 - 按内容类型和关键词搜索
+- Cloud Sync - 通过 Google Drive `appDataFolder` 同步剪贴板历史（文本条目、分类、设置）
 
 **架构**:
 ```
@@ -226,6 +227,10 @@ Before completing any task:
 │       ├── storage.ts (ClipboardStorage - 历史持久化)        │
 │       ├── category-storage.ts (CategoryStorage - 分类持久化)│
 │       └── handlers.ts (IPC handlers)                        │
+│  └── services/cloud-sync/                                   │
+│       ├── index.ts (CloudSyncService - 同步调度)            │
+│       ├── google-drive.ts (Google Drive API 封装)           │
+│       └── auth.ts (OAuth2 认证流程)                         │
 ├─────────────────────────────────────────────────────────────┤
 │  Native (Rust + napi-rs)                                    │
 │  └── clipboard/                                             │
@@ -239,6 +244,39 @@ Before completing any task:
 - `clipboard_change_count()` - 获取 NSPasteboard changeCount 用于轮询检测
 - 支持类型: plain text, RTF, HTML, PNG/TIFF images, file URLs
 - 来源应用识别 - 通过 NSWorkspace 获取前台应用信息
+
+#### Cloud Sync 配置
+
+Cloud Sync 使用 Google Drive `appDataFolder` 存储同步数据，需要用户自行创建 Google Cloud OAuth2 凭证。
+
+**配置步骤**:
+
+1. **创建 Google Cloud 项目**
+   - 前往 [Google Cloud Console](https://console.cloud.google.com/) 创建新项目
+   - 在「APIs & Services > Library」中搜索并启用 **Google Drive API**
+
+2. **配置 OAuth 同意屏幕**
+   - 进入「APIs & Services > OAuth consent screen」
+   - 选择 **External** 类型（个人使用无需 Google 审核）
+   - 填写应用名称等必要信息
+   - 在 Scopes 中添加 `https://www.googleapis.com/auth/drive.appdata`
+   - 在 Test users 中添加自己的 Google 账号
+
+3. **创建 OAuth Client ID**
+   - 进入「APIs & Services > Credentials」
+   - 点击「Create Credentials > OAuth client ID」
+   - 选择应用类型为 **Desktop app**
+   - 记录生成的 **Client ID** 和 **Client Secret**
+
+4. **在应用中配置**
+   - 打开 xToolbox → Clipboard Manager → Cloud Sync 设置
+   - 输入 Client ID 和 Client Secret
+   - 点击 Sign in with Google 完成授权
+
+**数据存储**:
+- 云端: Google Drive `appDataFolder`（用户不可见的应用专属文件夹）
+- 同步内容: 文本条目、分类、设置（JSON 格式）
+- 不同步: 图片数据（仅本地存储）
 
 ---
 
@@ -326,9 +364,8 @@ service.on('clipboard-change', (item) => {
    - `monitor.rs`: 修复 `NSArray` 创建方式，解决类型转换问题
 
 4. **存储路径调整**
-   - 原计划: iCloud Drive (`~/Library/Mobile Documents/`)
-   - 当前: `app.getPath('userData')` (避免沙盒权限问题)
-   - 路径: `~/Library/Application Support/xtoolbox/`
+   - 本地存储: `app.getPath('userData')` → `~/Library/Application Support/xtoolbox/`
+   - 云同步: Google Drive `appDataFolder` (隐藏应用文件夹，plaintext JSON)
 
 **已知问题与解决方案**:
 

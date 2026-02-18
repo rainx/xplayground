@@ -101,8 +101,8 @@ update_json_version() {
 update_cargo_version() {
   local file=$1
   local version=$2
-  # Only replace the first occurrence (the [package] version)
-  sed -i '' "0,/^version = \"[^\"]*\"/{s/^version = \"[^\"]*\"/version = \"$version\"/}" "$file"
+  # Replace the first occurrence (the [package] version), macOS sed compatible
+  sed -i '' "1,/^version = \"[^\"]*\"/s/^version = \"[^\"]*\"/version = \"$version\"/" "$file"
 }
 
 # ── Read current version ────────────────────────

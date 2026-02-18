@@ -1,5 +1,5 @@
 /**
- * Clipboard Storage - iCloud Drive based storage with encryption
+ * Clipboard Storage - Local encrypted storage with cloud sync support
  */
 
 import { app } from 'electron';
@@ -22,7 +22,7 @@ export class ClipboardStorage {
     this.settings = {
       maxHistoryItems: 1000,
       retentionDays: 30,
-      iCloudSyncEnabled: true,
+      cloudSyncEnabled: false,
     };
     this.cryptoService = getCryptoService();
   }
@@ -30,13 +30,7 @@ export class ClipboardStorage {
   private initPaths(): void {
     if (this.initialized) return;
 
-    // Use app's userData directory as fallback (works without special permissions)
-    // For iCloud sync, we'll try iCloud Drive path first, but fallback to local storage
     const userDataPath = app.getPath('userData');
-
-    // TODO: Once app is properly signed and has iCloud entitlements,
-    // we can use: ~/Library/Mobile Documents/com~rainx~xtoolbox/Documents/clipboard
-    // For now, use local storage
     this.basePath = path.join(userDataPath, 'clipboard');
     this.dataPath = path.join(this.basePath, 'data');
     this.assetsPath = path.join(this.basePath, 'assets');

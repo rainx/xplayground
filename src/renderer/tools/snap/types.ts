@@ -37,6 +37,7 @@ export interface PaddingSettings {
 export interface InsetSettings {
   value: number;
   balance: boolean; // Auto-balance based on image aspect ratio
+  customColor?: string; // Optional override for edge background color
 }
 
 // Shadow types

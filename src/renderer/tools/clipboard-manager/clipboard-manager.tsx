@@ -13,11 +13,14 @@ import { ContextMenu } from './components/context-menu';
 import { EditDialog } from './components/edit-dialog';
 import { AISettingsDialog, AISettings } from './components/ai-settings-dialog';
 import { AIPromptDialog } from './components/ai-prompt-dialog';
+import { SyncStatusIndicator } from './components/sync-status-indicator';
+import { SyncSettingsDialog } from './components/sync-settings-dialog';
 import { useClipboardHistory } from './hooks/use-clipboard-history';
 import { useSearch } from './hooks/use-search';
 import { useCategories } from './hooks/use-categories';
 import { useDragDrop } from './hooks/use-drag-drop';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
+import { useSyncStatus } from './hooks/use-sync-status';
 import type { Category, ClipboardItem, CategoryCreateInput, CategoryUpdateInput } from './types';
 import './styles/clipboard-manager.css';
 
@@ -44,6 +47,7 @@ export function ClipboardManager(): JSX.Element {
   const [aiPromptItem, setAIPromptItem] = useState<ClipboardItem | null>(null);
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [aiError, setAIError] = useState<string | null>(null);
+  const [isSyncSettingsOpen, setIsSyncSettingsOpen] = useState(false);
 
   const {
     items,
@@ -74,6 +78,16 @@ export function ClipboardManager(): JSX.Element {
     removeItemFromCategory,
     clearItemCategories,
   } = useCategories();
+
+  const {
+    syncState,
+    loading: syncLoading,
+    login: syncLogin,
+    logout: syncLogout,
+    toggleSync,
+    syncNow,
+    setOAuthClient,
+  } = useSyncStatus();
 
   // Subscribe to item category changes
   useEffect(() => {
@@ -428,12 +442,19 @@ export function ClipboardManager(): JSX.Element {
               onChange={handleSearchChange}
               isSearching={isSearching}
             />
+            <SyncStatusIndicator
+              syncState={syncState}
+              onClick={() => setIsSyncSettingsOpen(true)}
+            />
             <button
               className="settings-btn"
               onClick={() => setIsAISettingsOpen(true)}
               title="AI Settings"
             >
-              ⚙️
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8" cy="8" r="2.5" />
+                <path d="M8 1.5v1.25M8 13.25v1.25M1.5 8h1.25M13.25 8h1.25M3.4 3.4l.9.9M11.7 11.7l.9.9M3.4 12.6l.9-.9M11.7 4.3l.9-.9" />
+              </svg>
             </button>
             <button
               className="clear-btn"
@@ -441,7 +462,10 @@ export function ClipboardManager(): JSX.Element {
               disabled={loading || displayItems.length === 0}
               title={selectedCategoryId ? 'Clear category items' : 'Clear all history'}
             >
-              🗑
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2.5 4.5h11M5.5 4.5V3a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1.5M6.5 7v4.5M9.5 7v4.5" />
+                <path d="M3.5 4.5l.5 8.5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l.5-8.5" />
+              </svg>
             </button>
             <button
               className="refresh-btn"
@@ -449,7 +473,10 @@ export function ClipboardManager(): JSX.Element {
               disabled={loading}
               title="Refresh"
             >
-              ↻
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2.5 8a5.5 5.5 0 0 1 9.7-3.5M13.5 8a5.5 5.5 0 0 1-9.7 3.5" />
+                <path d="M12.2 1.5v3h-3M3.8 14.5v-3h3" />
+              </svg>
             </button>
           </div>
         </header>
@@ -552,6 +579,18 @@ export function ClipboardManager(): JSX.Element {
         }}
         isProcessing={isAIProcessing}
         error={aiError}
+      />
+
+      <SyncSettingsDialog
+        isOpen={isSyncSettingsOpen}
+        syncState={syncState}
+        loading={syncLoading}
+        onLogin={syncLogin}
+        onLogout={syncLogout}
+        onToggleSync={toggleSync}
+        onSyncNow={syncNow}
+        onSetOAuthClient={setOAuthClient}
+        onClose={() => setIsSyncSettingsOpen(false)}
       />
     </div>
   );

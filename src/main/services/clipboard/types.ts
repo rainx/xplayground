@@ -76,7 +76,7 @@ export interface AISettings {
 export interface ClipboardManagerSettings {
   maxHistoryItems: number;
   retentionDays: number;
-  iCloudSyncEnabled: boolean;
+  cloudSyncEnabled: boolean;
   aiSettings?: AISettings;
 }
 

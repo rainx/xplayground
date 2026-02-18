@@ -30,6 +30,35 @@ interface CategoryUpdateInput {
   order?: number;
 }
 
+interface SnapCaptureResult {
+  success: boolean;
+  imageData?: string;
+  width?: number;
+  height?: number;
+  error?: string;
+}
+
+type SnapCaptureCallback = (result: SnapCaptureResult) => void;
+
+const snapCaptureSubscribers = new Set<SnapCaptureCallback>();
+let pendingSnapCapture: SnapCaptureResult | null = null;
+
+ipcRenderer.on('snap:captured', (_event: unknown, result: SnapCaptureResult) => {
+  if (snapCaptureSubscribers.size === 0) {
+    pendingSnapCapture = result;
+    return;
+  }
+
+  snapCaptureSubscribers.forEach((callback) => callback(result));
+});
+
+const flushPendingSnapCapture = (callback: SnapCaptureCallback): void => {
+  if (!pendingSnapCapture) return;
+  const pending = pendingSnapCapture;
+  pendingSnapCapture = null;
+  Promise.resolve().then(() => callback(pending));
+};
+
 // Custom APIs for renderer
 const api = {
   // Native Rust function invocation
@@ -288,19 +317,10 @@ const api = {
         error?: string;
       }) => void
     ) => {
-      const handler = (
-        _event: unknown,
-        result: {
-          success: boolean;
-          imageData?: string;
-          width?: number;
-          height?: number;
-          error?: string;
-        }
-      ) => callback(result);
-      ipcRenderer.on('snap:captured', handler);
+      snapCaptureSubscribers.add(callback);
+      flushPendingSnapCapture(callback);
       return () => {
-        ipcRenderer.removeListener('snap:captured', handler);
+        snapCaptureSubscribers.delete(callback);
       };
     },
 
@@ -310,6 +330,38 @@ const api = {
       ipcRenderer.on('snap:navigate', handler);
       return () => {
         ipcRenderer.removeListener('snap:navigate', handler);
+      };
+    },
+  },
+
+  // Cloud Sync APIs
+  sync: {
+    getState: () =>
+      ipcRenderer.invoke('sync:get-state'),
+
+    getSettings: () =>
+      ipcRenderer.invoke('sync:get-settings'),
+
+    setOAuthClient: (config: { clientId: string; clientSecret: string }) =>
+      ipcRenderer.invoke('sync:set-oauth-client', config),
+
+    login: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('sync:login'),
+
+    logout: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('sync:logout'),
+
+    toggle: (enabled: boolean): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('sync:toggle', enabled),
+
+    syncNow: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('sync:sync-now'),
+
+    onStateChanged: (callback: (state: unknown) => void) => {
+      const handler = (_event: unknown, state: unknown) => callback(state);
+      ipcRenderer.on('sync:state-changed', handler);
+      return () => {
+        ipcRenderer.removeListener('sync:state-changed', handler);
       };
     },
   },

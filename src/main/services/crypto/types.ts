@@ -26,7 +26,8 @@ export type KeyPurpose =
   | 'image' // image assets
   | 'settings' // settings.json
   | 'category' // categories.json
-  | 'shortcuts'; // keyboard shortcuts settings
+  | 'shortcuts' // keyboard shortcuts settings
+  | 'sync-tokens'; // cloud sync OAuth tokens
 
 /** Migration state tracking */
 export interface MigrationState {

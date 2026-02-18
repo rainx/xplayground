@@ -58,6 +58,23 @@ jobs:
           prerelease: false
           generate_release_notes: true
           name: xToolbox v${{ steps.version.outputs.version }}
+          body: |
+            ## 安装方式
+
+            ### Homebrew（推荐）
+            ```bash
+            brew install --cask rainx/tap/xtoolbox
+            ```
+
+            ### 直接下载
+            | 架构 | DMG | ZIP |
+            |------|-----|-----|
+            | Apple Silicon | `xToolbox-${{ steps.version.outputs.version }}-mac-arm64.dmg` | `xToolbox-${{ steps.version.outputs.version }}-mac-arm64.zip` |
+            | Intel | `xToolbox-${{ steps.version.outputs.version }}-mac-x64.dmg` | `xToolbox-${{ steps.version.outputs.version }}-mac-x64.zip` |
+
+            > 首次打开未签名版本：右键点击应用 → 选择「打开」
+
+            ---
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

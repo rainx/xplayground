@@ -107,6 +107,18 @@ export interface CategoryUpdateInput {
   order?: number;
 }
 
+// Sync types
+export type SyncStatus = 'idle' | 'syncing' | 'error' | 'disconnected';
+
+export interface SyncState {
+  status: SyncStatus;
+  provider: string | null;
+  lastSyncedAt: string | null;
+  error: string | null;
+  isAuthenticated: boolean;
+  userEmail: string | null;
+}
+
 // Window API type extension
 declare global {
   interface Window {
@@ -164,6 +176,17 @@ declare global {
           onUpdated: (callback: (category: Category) => void) => () => void;
           onDeleted: (callback: (id: string) => void) => () => void;
         };
+      };
+      // Cloud Sync APIs
+      sync: {
+        getState: () => Promise<SyncState>;
+        getSettings: () => Promise<Record<string, unknown>>;
+        setOAuthClient: (config: { clientId: string; clientSecret: string }) => Promise<{ success: boolean; error?: string }>;
+        login: () => Promise<{ success: boolean; error?: string }>;
+        logout: () => Promise<{ success: boolean; error?: string }>;
+        toggle: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+        syncNow: () => Promise<{ success: boolean; error?: string }>;
+        onStateChanged: (callback: (state: SyncState) => void) => () => void;
       };
       // Snap (Screenshot Beautification) APIs
       snap: {

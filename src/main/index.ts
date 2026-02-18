@@ -8,6 +8,8 @@ import { getMigrationService } from './services/migration';
 import { getCryptoService } from './services/crypto';
 import { getShortcutService } from './services/shortcuts';
 import { registerShortcutHandlers } from './services/shortcuts/handlers';
+import { getCloudSyncService } from './services/cloud-sync';
+import { registerCloudSyncHandlers } from './services/cloud-sync/handlers';
 import { runCLI } from './cli/clipboard-cli';
 
 // Check if running in CLI mode
@@ -311,6 +313,19 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
     // Register shortcut IPC handlers
     registerShortcutHandlers(shortcutService);
 
+    // Initialize cloud sync service
+    const cloudSyncService = getCloudSyncService();
+    await cloudSyncService.initialize();
+    registerCloudSyncHandlers(cloudSyncService, window);
+
+    // Hook clipboard changes to trigger sync
+    clipboardService.on('clipboard-change', () => {
+      cloudSyncService.scheduleSyncOnChange();
+    });
+    clipboardService.on('item-deleted', () => {
+      cloudSyncService.scheduleSyncOnChange();
+    });
+
     console.log('All services initialized');
   } catch (error) {
     console.error('Failed to initialize services:', error);
@@ -412,6 +427,10 @@ app.on('quit', () => {
   // Cleanup
   const clipboardService = getClipboardService();
   clipboardService.destroy();
+
+  // Cleanup cloud sync
+  const cloudSyncService = getCloudSyncService();
+  cloudSyncService.destroy();
 
   // Clear crypto keys from memory
   const cryptoService = getCryptoService();

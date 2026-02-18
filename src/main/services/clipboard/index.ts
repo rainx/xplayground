@@ -4,7 +4,7 @@
  * Responsibilities:
  * - Monitor clipboard changes via native module polling
  * - Transform native clipboard data to app format
- * - Persist data to iCloud storage
+ * - Persist data to local encrypted storage
  * - Emit events to renderer process
  */
 

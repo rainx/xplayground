@@ -6,7 +6,7 @@
  * - Automatic clipboard monitoring
  * - Visual strip UI with previews
  * - Search functionality
- * - iCloud sync via local storage
+ * - Google Drive cloud sync
  */
 
 import { ToolMetadata, ToolComponent } from '@/shared/types';

@@ -360,11 +360,73 @@
   gap: 8px;
 }
 
+.snap-hint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 .snap-detected-color {
   width: 16px;
   height: 16px;
   border-radius: 4px;
   border: 1px solid var(--border);
+}
+
+.snap-detected-color.custom {
+  border-color: var(--accent);
+}
+
+.snap-inset-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.snap-inset-color-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.snap-inset-color-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.snap-color-input {
+  width: 28px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.snap-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.snap-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+
+.snap-color-reset {
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.snap-color-reset:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
 }
 
 .snap-toggle-small {

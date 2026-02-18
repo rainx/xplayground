@@ -25,7 +25,8 @@
     "package:dir": "pnpm build && electron-builder --mac --dir",
     "dist": "pnpm package",
     "dist:all": "pnpm build && electron-builder --mac --x64 --arm64",
-    "cli": "electron . --cli"
+    "cli": "electron . --cli",
+    "release": "./scripts/release.sh"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

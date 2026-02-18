@@ -23,11 +23,26 @@ export function Snap(): JSX.Element {
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const canvasAreaRef = useRef<HTMLDivElement>(null);
+  const customInsetColor = settings.inset.customColor;
+  const hasCustomInsetColor = Boolean(customInsetColor);
   const isEdgeBackgroundSolid = image ? Boolean(image.edgeBgSolid) : true;
-  const effectiveInset = isEdgeBackgroundSolid ? settings.inset.value : 0;
-  const innerBackground = isEdgeBackgroundSolid
-    ? (image?.detectedBgColor ?? '#ffffff')
-    : 'transparent';
+  const allowInset = !image ? true : isEdgeBackgroundSolid || hasCustomInsetColor;
+  const effectiveInset = allowInset ? settings.inset.value : 0;
+  const innerBackground = hasCustomInsetColor
+    ? (customInsetColor ?? '#ffffff')
+    : isEdgeBackgroundSolid
+      ? (image?.detectedBgColor ?? '#ffffff')
+      : 'transparent';
+  const insetSwatchColor = hasCustomInsetColor
+    ? customInsetColor
+    : isEdgeBackgroundSolid
+      ? image?.detectedBgColor
+      : undefined;
+  const insetSwatchTitle = hasCustomInsetColor
+    ? `Custom: ${customInsetColor}`
+    : insetSwatchColor
+      ? `Detected: ${insetSwatchColor}`
+      : undefined;
 
   // Helper to get actual image dimensions from data URL
   // This is needed because nativeImage.getSize() returns CSS logical pixels,
@@ -704,18 +719,18 @@ export function Snap(): JSX.Element {
                   <span
                     className="snap-slider-value"
                     title={
-                      Boolean(image) && !isEdgeBackgroundSolid
+                      Boolean(image) && !allowInset
                         ? 'Edge colors not uniform; inset disabled'
                         : undefined
                     }
                   >
                     {effectiveInset}px
                   </span>
-                  {isEdgeBackgroundSolid && image?.detectedBgColor && (
+                  {insetSwatchColor && (
                     <span
-                      className="snap-detected-color"
-                      style={{ background: image.detectedBgColor }}
-                      title={`Detected: ${image.detectedBgColor}`}
+                      className={`snap-detected-color ${hasCustomInsetColor ? 'custom' : ''}`}
+                      style={{ background: insetSwatchColor }}
+                      title={insetSwatchTitle}
                     />
                   )}
                 </span>
@@ -726,7 +741,7 @@ export function Snap(): JSX.Element {
                 min="0"
                 max="100"
                 value={effectiveInset}
-                disabled={Boolean(image) && !isEdgeBackgroundSolid}
+                disabled={Boolean(image) && !allowInset}
                 onChange={(e) =>
                   updateSettings('inset', {
                     ...settings.inset,
@@ -734,6 +749,37 @@ export function Snap(): JSX.Element {
                   })
                 }
               />
+            </div>
+            <div className="snap-inset-color-row">
+              <span className="snap-inset-color-label">Color</span>
+              <div className="snap-inset-color-controls">
+                <input
+                  type="color"
+                  className="snap-color-input"
+                  value={customInsetColor ?? insetSwatchColor ?? '#ffffff'}
+                  onChange={(e) =>
+                    updateSettings('inset', {
+                      ...settings.inset,
+                      customColor: e.target.value,
+                    })
+                  }
+                  aria-label="Custom inset color"
+                />
+                {hasCustomInsetColor && (
+                  <button
+                    type="button"
+                    className="snap-color-reset"
+                    onClick={() =>
+                      updateSettings('inset', {
+                        ...settings.inset,
+                        customColor: undefined,
+                      })
+                    }
+                  >
+                    Auto
+                  </button>
+                )}
+              </div>
             </div>
             <div
               className="snap-toggle snap-toggle-small"
@@ -747,6 +793,11 @@ export function Snap(): JSX.Element {
               <div className={`snap-toggle-switch ${settings.inset.balance ? 'active' : ''}`} />
               <span className="snap-toggle-label">Balance</span>
             </div>
+            {Boolean(image) && !allowInset && (
+              <div className="snap-hint">
+                Edge colors are not uniform; inset disabled.
+              </div>
+            )}
           </div>
 
           {/* Corner Radius */}

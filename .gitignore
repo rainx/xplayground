@@ -11,9 +11,11 @@ dist/
 # Native build
 native/target/
 
-# IDE
+# IDE & AI tools
 .idea/
 .vscode/
+.claude/skills/
+.gemini/
 *.swp
 *.swo
 

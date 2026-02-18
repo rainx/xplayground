@@ -44,7 +44,7 @@ jobs:
 
           # 未配置签名时禁用自动发现
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: pnpm package
+        run: pnpm build && electron-builder --mac --config --publish never
 
       - name: Get version from tag
         id: version

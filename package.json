@@ -1,6 +1,6 @@
 {
   "name": "xtoolbox",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Personal Mac toolbox - clone useful features from paid apps",
   "main": "./out/main/index.js",
   "author": "rainx",

@@ -19,6 +19,7 @@ const isCliMode = cliIndex !== -1;
 let mainWindow: BrowserWindow | null = null;
 let popupWindow: BrowserWindow | null = null;
 let overlayWindows: BrowserWindow[] = [];
+let isQuitting = false;
 
 function createOverlayWindows(mode: 'region' | 'window-picker'): BrowserWindow[] {
   destroyOverlayWindows();
@@ -113,6 +114,17 @@ function createWindow(): BrowserWindow {
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show();
   });
+
+  // On macOS, hide the window instead of destroying it when the user clicks close.
+  // This keeps the app alive in the dock and allows global shortcuts to reopen it.
+  if (process.platform === 'darwin') {
+    mainWindow.on('close', (event) => {
+      if (!isQuitting) {
+        event.preventDefault();
+        mainWindow?.hide();
+      }
+    });
+  }
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
@@ -299,6 +311,11 @@ function togglePopupWindow(): void {
 async function handleSnapCaptureRegion(): Promise<void> {
   if (!mainWindow || mainWindow.isDestroyed()) return;
 
+  // Ensure window is shown (it may be hidden on macOS)
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+
   // Navigate to snap tool first
   mainWindow.webContents.send('snap:navigate');
 
@@ -324,6 +341,11 @@ async function handleSnapCaptureRegion(): Promise<void> {
 
 async function handleSnapCaptureWindow(): Promise<void> {
   if (!mainWindow || mainWindow.isDestroyed()) return;
+
+  // Ensure window is shown (it may be hidden on macOS)
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
 
   mainWindow.webContents.send('snap:navigate');
 
@@ -491,11 +513,13 @@ app.whenReady().then(async () => {
   registerWindowHandlers(window, popupWindow);
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow || mainWindow.isDestroyed()) {
       const newWindow = createWindow();
       initializeServices(newWindow);
       createPopupWindow();
       registerWindowHandlers(newWindow, popupWindow);
+    } else {
+      mainWindow.show();
     }
   });
 });
@@ -504,6 +528,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
 });
 
 app.on('will-quit', () => {

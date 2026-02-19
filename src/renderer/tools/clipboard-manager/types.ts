@@ -226,6 +226,33 @@ declare global {
           }) => void
         ) => () => void;
         onNavigate: (callback: () => void) => () => void;
+        checkPermission: () => Promise<string>;
+        requestPermission: () => Promise<string>;
+        overlay: {
+          signalReady: (displayId: number) => void;
+          onScreenshot: (callback: (data: {
+            displayId: number;
+            imageDataUrl: string;
+            bounds: { x: number; y: number; width: number; height: number };
+            scaleFactor: number;
+          }) => void) => () => void;
+          sendSelection: (selection: {
+            displayId: number;
+            x: number;
+            y: number;
+            width: number;
+            height: number;
+          }) => void;
+          sendCancel: () => void;
+          onWindowSources: (callback: (sources: Array<{
+            id: string;
+            name: string;
+            thumbnailDataUrl: string;
+            width: number;
+            height: number;
+          }>) => void) => () => void;
+          selectWindow: (windowId: string) => Promise<void>;
+        };
       };
       // Keyboard Shortcuts APIs
       shortcuts: {

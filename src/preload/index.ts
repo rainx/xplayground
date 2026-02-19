@@ -332,6 +332,70 @@ const api = {
         ipcRenderer.removeListener('snap:navigate', handler);
       };
     },
+
+    // Permission management
+    checkPermission: (): Promise<string> =>
+      ipcRenderer.invoke('snap:check-permission'),
+
+    requestPermission: (): Promise<string> =>
+      ipcRenderer.invoke('snap:request-permission'),
+
+    // Overlay communication (used by overlay windows)
+    overlay: {
+      signalReady: (displayId: number) =>
+        ipcRenderer.send('snap:overlay-ready', displayId),
+
+      onScreenshot: (callback: (data: {
+        displayId: number;
+        imageDataUrl: string;
+        bounds: { x: number; y: number; width: number; height: number };
+        scaleFactor: number;
+      }) => void) => {
+        const handler = (_event: unknown, data: {
+          displayId: number;
+          imageDataUrl: string;
+          bounds: { x: number; y: number; width: number; height: number };
+          scaleFactor: number;
+        }) => callback(data);
+        ipcRenderer.on('snap:overlay-screenshot', handler);
+        return () => {
+          ipcRenderer.removeListener('snap:overlay-screenshot', handler);
+        };
+      },
+
+      sendSelection: (selection: {
+        displayId: number;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      }) => ipcRenderer.send('snap:overlay-selection', selection),
+
+      sendCancel: () => ipcRenderer.send('snap:overlay-cancel'),
+
+      onWindowSources: (callback: (sources: Array<{
+        id: string;
+        name: string;
+        thumbnailDataUrl: string;
+        width: number;
+        height: number;
+      }>) => void) => {
+        const handler = (_event: unknown, sources: Array<{
+          id: string;
+          name: string;
+          thumbnailDataUrl: string;
+          width: number;
+          height: number;
+        }>) => callback(sources);
+        ipcRenderer.on('snap:window-sources', handler);
+        return () => {
+          ipcRenderer.removeListener('snap:window-sources', handler);
+        };
+      },
+
+      selectWindow: (windowId: string): Promise<void> =>
+        ipcRenderer.invoke('snap:window-selected', windowId),
+    },
   },
 
   // Cloud Sync APIs

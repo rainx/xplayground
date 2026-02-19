@@ -3,7 +3,7 @@ import { join } from 'path';
 import { getClipboardService } from './services/clipboard';
 import { registerClipboardHandlers, registerWindowHandlers } from './services/clipboard/handlers';
 import { getSnapService } from './services/snap';
-import { registerSnapHandlers } from './services/snap/handlers';
+import { registerSnapHandlers, setOverlayCallbacks } from './services/snap/handlers';
 import { getMigrationService } from './services/migration';
 import { getCryptoService } from './services/crypto';
 import { getShortcutService } from './services/shortcuts';
@@ -18,6 +18,83 @@ const isCliMode = cliIndex !== -1;
 
 let mainWindow: BrowserWindow | null = null;
 let popupWindow: BrowserWindow | null = null;
+let overlayWindows: BrowserWindow[] = [];
+
+function createOverlayWindows(mode: 'region' | 'window-picker'): BrowserWindow[] {
+  destroyOverlayWindows();
+
+  const displays = screen.getAllDisplays();
+
+  if (mode === 'window-picker') {
+    // Window picker only needs one overlay on the primary display
+    const primary = screen.getPrimaryDisplay();
+    const win = createSingleOverlay(mode, primary);
+    overlayWindows = [win];
+    return overlayWindows;
+  }
+
+  // Region mode: one overlay per display
+  for (const display of displays) {
+    const win = createSingleOverlay(mode, display);
+    overlayWindows.push(win);
+  }
+
+  return overlayWindows;
+}
+
+function createSingleOverlay(
+  mode: 'region' | 'window-picker',
+  display: Electron.Display
+): BrowserWindow {
+  const { x, y, width, height } = display.bounds;
+
+  const win = new BrowserWindow({
+    x,
+    y,
+    width,
+    height,
+    show: false,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    focusable: true,
+    hasShadow: false,
+    resizable: false,
+    movable: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+    },
+  });
+
+  win.setSimpleFullScreen(true);
+
+  const query = `mode=${mode}&displayId=${display.id}`;
+
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}/overlay.html?${query}`);
+  } else {
+    win.loadFile(join(__dirname, '../renderer/overlay.html'), { query: { mode, displayId: String(display.id) } });
+  }
+
+  win.once('ready-to-show', () => {
+    win.show();
+    win.focus();
+  });
+
+  return win;
+}
+
+function destroyOverlayWindows(): void {
+  for (const win of overlayWindows) {
+    if (!win.isDestroyed()) {
+      win.setSimpleFullScreen(false);
+      win.close();
+    }
+  }
+  overlayWindows = [];
+}
 
 function createWindow(): BrowserWindow {
   mainWindow = new BrowserWindow({
@@ -215,23 +292,25 @@ function togglePopupWindow(): void {
 }
 
 // Snap capture handlers for global shortcuts
+// These trigger the capture flow by invoking the IPC handler from the renderer side.
+// The IPC handler manages window hiding/showing, overlay creation, and result delivery.
+// We send snap:navigate first to switch the renderer to the Snap tool,
+// then invoke captureRegion/captureWindow, and forward the result via snap:captured.
 async function handleSnapCaptureRegion(): Promise<void> {
-  const snapService = getSnapService();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
 
-  // Hide main window before capture to avoid self-capture
-  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
-    mainWindow.hide();
-  }
+  // Navigate to snap tool first
+  mainWindow.webContents.send('snap:navigate');
 
   try {
-    const result = await snapService.captureRegion();
+    // Invoke the IPC handler directly - it handles hide/show/overlay
+    const result = await mainWindow.webContents.executeJavaScript(
+      `window.api.snap.captureRegion()`
+    );
 
-    // Show main window, focus it, and send captured result
+    // Send captured result to renderer
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.show();
       mainWindow.focus();
-      // First send navigation event, then the captured data
-      mainWindow.webContents.send('snap:navigate');
       mainWindow.webContents.send('snap:captured', result);
     }
   } catch (error) {
@@ -244,22 +323,17 @@ async function handleSnapCaptureRegion(): Promise<void> {
 }
 
 async function handleSnapCaptureWindow(): Promise<void> {
-  const snapService = getSnapService();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
 
-  // Hide main window before capture
-  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
-    mainWindow.hide();
-  }
+  mainWindow.webContents.send('snap:navigate');
 
   try {
-    const result = await snapService.captureWindow();
+    const result = await mainWindow.webContents.executeJavaScript(
+      `window.api.snap.captureWindow()`
+    );
 
-    // Show main window, focus it, and send captured result
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.show();
       mainWindow.focus();
-      // First send navigation event, then the captured data
-      mainWindow.webContents.send('snap:navigate');
       mainWindow.webContents.send('snap:captured', result);
     }
   } catch (error) {
@@ -297,6 +371,13 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
     // Register Snap handlers
     const snapService = getSnapService();
     registerSnapHandlers(snapService, window);
+
+    // Wire up overlay callbacks for snap service
+    setOverlayCallbacks({
+      createOverlay: createOverlayWindows,
+      destroyOverlay: destroyOverlayWindows,
+      getMainWindow: () => mainWindow,
+    });
 
     // Initialize shortcut service
     const shortcutService = getShortcutService();
@@ -337,6 +418,13 @@ async function initializeServices(window: BrowserWindow): Promise<void> {
     // Register Snap handlers in degraded state too
     const snapService = getSnapService();
     registerSnapHandlers(snapService, window);
+
+    // Wire up overlay callbacks even in degraded state
+    setOverlayCallbacks({
+      createOverlay: createOverlayWindows,
+      destroyOverlay: destroyOverlayWindows,
+      getMainWindow: () => mainWindow,
+    });
 
     // Try to initialize shortcut service in degraded state
     try {
